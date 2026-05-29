@@ -1,6 +1,6 @@
 {
   "name": "react-chessboard-with-controls",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "The React Chessboard with Controls used at endchess.training",
   "license": "MIT",
   "author": "Robert Blackwell",
@@ -29,8 +29,12 @@
     "chessboard component",
     "drag and drop"
   ],
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "set NODE_ENV=production && rm -rf /dist && rollup -c",
+    "build": "rollup -c",
+    "prepare": "rollup -c",
     "test": "echo \"Error: no test specified\" && exit 1",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",

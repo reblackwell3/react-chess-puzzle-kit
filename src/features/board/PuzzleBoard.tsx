@@ -1,7 +1,6 @@
 import { HighlightChessboard } from './HighlightChessboard';
 import { PuzzlePosition } from '../position/Position';
 
-// Define the props interface directly inside the PuzzleBoard component file
 export interface PuzzleBoardProps {
   position: PuzzlePosition;
   onFeedback: (feedbackData: any) => void;
@@ -50,6 +49,7 @@ export const PuzzleBoard = ({
       onPieceDrop={onPieceDrop}
       position={position.fen()}
       boardOrientation={position.getPlayerColor()}
+      promotionDialogVariant="modal"
     />
   );
 };
