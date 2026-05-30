@@ -38,6 +38,11 @@ export abstract class Position implements Traversable {
     return this.i >= this.moves.length;
   }
 
+  /** True when a correct guess at the current index completes the puzzle. */
+  isCompletedByCorrectGuess(): boolean {
+    return this.i >= this.moves.length - 2;
+  }
+
   fen(): string {
     return this.chess.fen();
   }

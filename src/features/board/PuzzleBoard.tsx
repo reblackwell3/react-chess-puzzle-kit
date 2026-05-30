@@ -22,7 +22,7 @@ export const PuzzleBoard = ({
       index: position.getIndex(),
       guess: { sourceSquare, targetSquare, piece },
       isCorrect: isCorrect,
-      isFinished: position.isFinished(),
+      isFinished: isCorrect && position.isCompletedByCorrectGuess(),
     });
     incInteractionNum();
     setTimeout(() => {

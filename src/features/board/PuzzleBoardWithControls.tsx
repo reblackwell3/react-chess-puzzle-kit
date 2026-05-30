@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { PuzzleBoard } from './PuzzleBoard';
 import { PuzzlePosition } from '../position/Position';
 import { ThemeProvider } from '../theme/ThemeProvider';
+export type PuzzleResultStatus = 'none' | 'incorrect' | 'complete';
+
 export interface PuzzleBoardWithControlsProps {
   theme: 'light' | 'dark';
   apiProxy: {
@@ -17,7 +19,7 @@ export interface PuzzleBoardWithControlsProps {
   renderControls: (
     showHint: () => void,
     nextPuzzle: () => void,
-    isFinished: boolean,
+    resultStatus: PuzzleResultStatus,
   ) => React.ReactNode;
 }
 
@@ -32,6 +34,7 @@ export const PuzzleBoardWithControls = ({
     () => new PuzzlePosition('8/8/8/7K/k7/8/8/8 w - - 0 1', []),
   );
   const [puzzleNum, setPuzzleNum] = useState(0);
+  const [hasIncorrectAttempt, setHasIncorrectAttempt] = useState(false);
   const [, setInteractionNum] = useState(0);
 
   const incInteractionNum = () => {
@@ -39,6 +42,7 @@ export const PuzzleBoardWithControls = ({
   };
 
   useEffect(() => {
+    setHasIncorrectAttempt(false);
     onFetch().then((data) => {
       if (!data || !data.fen || !data.moves) {
         console.error('Invalid data fetched:', data);
@@ -55,8 +59,31 @@ export const PuzzleBoardWithControls = ({
     });
   }, [puzzleNum]);
 
+  const handleFeedback = (feedbackData: {
+    index: number;
+    guess?: { sourceSquare: string; targetSquare: string; piece: string };
+    hintRequested?: boolean;
+    isCorrect?: boolean;
+    isFinished?: boolean;
+  }) => {
+    if (feedbackData.hintRequested || feedbackData.isCorrect === false) {
+      setHasIncorrectAttempt(true);
+    }
+    onFeedback(feedbackData);
+  };
+
+  const getResultStatus = (): PuzzleResultStatus => {
+    if (hasIncorrectAttempt) {
+      return 'incorrect';
+    }
+    if (position.isFinished()) {
+      return 'complete';
+    }
+    return 'none';
+  };
+
   const handleHintRequest = () => {
-    onFeedback({ index: position.getIndex(), hintRequested: true });
+    handleFeedback({ index: position.getIndex(), hintRequested: true });
     position.wantsHint(true);
     incInteractionNum();
     setTimeout(() => {
@@ -76,14 +103,14 @@ export const PuzzleBoardWithControls = ({
       {position && (
         <PuzzleBoard
           position={position}
-          onFeedback={onFeedback}
+          onFeedback={handleFeedback}
           incInteractionNum={incInteractionNum}
         />
       )}
       {renderControls(
         handleHintRequest,
         handleNextPuzzle,
-        position.isFinished(),
+        getResultStatus(),
       )}
     </ThemeProvider>
   );

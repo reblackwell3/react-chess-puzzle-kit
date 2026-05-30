@@ -30,13 +30,14 @@ const apiProxy = {
 const renderControls = (
   showHint: () => void,
   nextPuzzle: () => void,
-  isFinished: boolean,
+  resultStatus: 'none' | 'incorrect' | 'complete',
 ) => {
   return (
     <div>
       <button onClick={showHint}>Show Hint</button>
       <button onClick={nextPuzzle}>Next Puzzle</button>
-      {isFinished && <button>Finished!</button>}
+      {resultStatus === 'complete' && <button>Finished!</button>}
+      {resultStatus === 'incorrect' && <button>Incorrect!</button>}
     </div>
   );
 };
