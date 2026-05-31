@@ -1,5 +1,6 @@
 import { Traversable } from './Traversable';
 import { Chess } from 'chess.js';
+import { PuzzleMoveRecord } from './moveHistory';
 
 export abstract class Position implements Traversable {
   protected chess: Chess;
@@ -48,31 +49,33 @@ export abstract class Position implements Traversable {
   }
 
   getCheckSquare(): string {
-    if (!this.chess.inCheck()) {
-      return '';
-    }
-
-    const turn = this.chess.turn();
-    const kingPieceType = 'k';
-
-    // Step 1: Map each square to an object { square, piece }
-    const squaresWithPieces = this.chess.board().flatMap((row, rowIndex) =>
-      row.map((piece, colIndex) => ({
-        square: String.fromCharCode(97 + colIndex) + (8 - rowIndex),
-        piece: piece,
-      })),
-    );
-
-    // Step 2: Filter to find the king's square
-    const kingSquare = squaresWithPieces
-      .filter(
-        ({ piece }) =>
-          piece && piece.type === kingPieceType && piece.color === turn,
-      )
-      .map(({ square }) => square)[0]; // Get the first matching square
-
-    return kingSquare;
+    return getCheckSquareFromChess(this.chess);
   }
+}
+
+export function getCheckSquareFromChess(chess: Chess): string {
+  if (!chess.inCheck()) {
+    return '';
+  }
+
+  const turn = chess.turn();
+  const kingPieceType = 'k';
+
+  const squaresWithPieces = chess.board().flatMap((row, rowIndex) =>
+    row.map((piece, colIndex) => ({
+      square: String.fromCharCode(97 + colIndex) + (8 - rowIndex),
+      piece: piece,
+    })),
+  );
+
+  const kingSquare = squaresWithPieces
+    .filter(
+      ({ piece }) =>
+        piece && piece.type === kingPieceType && piece.color === turn,
+    )
+    .map(({ square }) => square)[0];
+
+  return kingSquare ?? '';
 }
 
 export class PuzzlePosition extends Position {
@@ -80,11 +83,60 @@ export class PuzzlePosition extends Position {
   protected guessedMove: string = '';
   protected isHintWanted: boolean = false;
   protected playerColor: string;
+  protected readonly initialFen: string;
+  protected moveHistory: PuzzleMoveRecord[] = [];
+
   constructor(initialFEN: string, moves: string[]) {
     super();
+    this.initialFen = initialFEN;
     this.chess.load(initialFEN);
     this.moves = moves;
     this.playerColor = this.chess.turn() === 'b' ? 'white' : 'black';
+  }
+
+  next(): boolean {
+    if (this.i >= this.moves.length) {
+      return false;
+    }
+
+    const moveUci = this.moves[this.i];
+    const movingColor = this.chess.turn() === 'w' ? 'white' : 'black';
+    const result = super.next();
+
+    if (result) {
+      const san = this.chess.history().at(-1);
+      this.moveHistory.push({
+        ply: this.moveHistory.length,
+        uci: moveUci,
+        san,
+        actor: movingColor === this.playerColor ? 'player' : 'opponent',
+        isCorrect: true,
+      });
+    }
+
+    return result;
+  }
+
+  getInitialFen(): string {
+    return this.initialFen;
+  }
+
+  getSolutionMoves(): string[] {
+    return [...this.moves];
+  }
+
+  getMoveHistory(): PuzzleMoveRecord[] {
+    return [...this.moveHistory];
+  }
+
+  recordHint(): void {
+    this.moveHistory.push({
+      ply: this.moveHistory.length,
+      uci: this.moves[this.i] ?? '',
+      san: 'Hint',
+      actor: 'attempt',
+      isCorrect: false,
+    });
   }
 
   judgeGuess = (sourceSquare: string, targetSquare: string, piece: string) => {
@@ -94,6 +146,18 @@ export class PuzzlePosition extends Position {
     const isCorrect =
       this.judgeMove(move) || this.judgeMove(moveWithPromotionPiece);
     this.isCorrect = isCorrect;
+
+    if (!isCorrect) {
+      this.moveHistory.push({
+        ply: this.moveHistory.length,
+        uci: moveWithPromotionPiece.length > move.length
+          ? moveWithPromotionPiece
+          : move,
+        actor: 'attempt',
+        isCorrect: false,
+      });
+    }
+
     return isCorrect;
   };
 
