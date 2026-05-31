@@ -1,8 +1,23 @@
 import React, { useEffect, useState } from 'react';
+import {
+  AnalysisBoard,
+  AnalysisContainerRenderProps,
+  AnalysisSidebarRenderProps,
+  PuzzleResultStatus,
+  usePuzzleAnalysis,
+} from '../analysis';
+import { AnalysisControls } from '../analysis/renderProps';
 import { PuzzleBoard } from './PuzzleBoard';
 import { PuzzlePosition } from '../position/Position';
 import { ThemeProvider } from '../theme/ThemeProvider';
-export type PuzzleResultStatus = 'none' | 'incorrect' | 'complete';
+export type { PuzzleMoveRecord } from '../position/moveHistory';
+export type {
+  AnalysisContainerRenderProps,
+  AnalysisControls,
+  AnalysisSidebarRenderProps,
+  PuzzleAnalysisContext,
+  PuzzleResultStatus,
+} from '../analysis';
 
 export interface PuzzleBoardWithControlsProps {
   theme: 'light' | 'dark';
@@ -20,6 +35,13 @@ export interface PuzzleBoardWithControlsProps {
     showHint: () => void,
     nextPuzzle: () => void,
     resultStatus: PuzzleResultStatus,
+    analysis: AnalysisControls,
+  ) => React.ReactNode;
+  renderAnalysisSidebar?: (
+    props: AnalysisSidebarRenderProps,
+  ) => React.ReactNode;
+  renderAnalysisContainer?: (
+    props: AnalysisContainerRenderProps,
   ) => React.ReactNode;
 }
 
@@ -27,6 +49,8 @@ export const PuzzleBoardWithControls = ({
   theme,
   apiProxy,
   renderControls,
+  renderAnalysisSidebar,
+  renderAnalysisContainer,
 }: PuzzleBoardWithControlsProps) => {
   const { onFetch, onFeedback } = apiProxy;
 
@@ -35,6 +59,7 @@ export const PuzzleBoardWithControls = ({
   );
   const [puzzleNum, setPuzzleNum] = useState(0);
   const [hasIncorrectAttempt, setHasIncorrectAttempt] = useState(false);
+  const [puzzleComplete, setPuzzleComplete] = useState(false);
   const [, setInteractionNum] = useState(0);
 
   const incInteractionNum = () => {
@@ -43,6 +68,7 @@ export const PuzzleBoardWithControls = ({
 
   useEffect(() => {
     setHasIncorrectAttempt(false);
+    setPuzzleComplete(false);
     onFetch().then((data) => {
       if (!data || !data.fen || !data.moves) {
         console.error('Invalid data fetched:', data);
@@ -69,6 +95,9 @@ export const PuzzleBoardWithControls = ({
     if (feedbackData.hintRequested || feedbackData.isCorrect === false) {
       setHasIncorrectAttempt(true);
     }
+    if (feedbackData.isFinished) {
+      setPuzzleComplete(true);
+    }
     onFeedback(feedbackData);
   };
 
@@ -76,13 +105,14 @@ export const PuzzleBoardWithControls = ({
     if (hasIncorrectAttempt) {
       return 'incorrect';
     }
-    if (position.isFinished()) {
+    if (puzzleComplete || position.isFinished()) {
       return 'complete';
     }
     return 'none';
   };
 
   const handleHintRequest = () => {
+    position.recordHint();
     handleFeedback({ index: position.getIndex(), hintRequested: true });
     position.wantsHint(true);
     incInteractionNum();
@@ -90,28 +120,40 @@ export const PuzzleBoardWithControls = ({
       position.resetInteractions();
       incInteractionNum();
     }, 500);
-    // placeholder for apiProxy.onHintFeedback() call
   };
 
   const handleNextPuzzle = () => {
     setPuzzleNum((prevPuzzleNum) => prevPuzzleNum + 1);
-    // placeholder for apiProxy.onNext() call
   };
+
+  const resultStatus = getResultStatus();
+  const analysis = usePuzzleAnalysis(position, resultStatus, puzzleNum);
+  const analysisSnapshot =
+    analysis.isOpen && analysis.snapshot ? analysis.snapshot : null;
 
   return (
     <ThemeProvider theme={theme}>
-      {position && (
-        <PuzzleBoard
-          position={position}
-          onFeedback={handleFeedback}
-          incInteractionNum={incInteractionNum}
+      {analysisSnapshot ? (
+        <AnalysisBoard
+          analysisContext={analysisSnapshot}
+          onClose={analysis.closeAnalysis}
+          theme={theme}
+          renderSidebar={renderAnalysisSidebar}
+          renderContainer={renderAnalysisContainer}
         />
+      ) : (
+        position && (
+          <PuzzleBoard
+            position={position}
+            onFeedback={handleFeedback}
+            incInteractionNum={incInteractionNum}
+          />
+        )
       )}
-      {renderControls(
-        handleHintRequest,
-        handleNextPuzzle,
-        getResultStatus(),
-      )}
+      {renderControls(handleHintRequest, handleNextPuzzle, resultStatus, {
+        visible: analysis.canOpen,
+        openAnalysis: analysis.openAnalysis,
+      })}
     </ThemeProvider>
   );
 };

@@ -31,11 +31,15 @@ const renderControls = (
   showHint: () => void,
   nextPuzzle: () => void,
   resultStatus: 'none' | 'incorrect' | 'complete',
+  analysis: { visible: boolean; openAnalysis: () => void },
 ) => {
   return (
     <div>
       <button onClick={showHint}>Show Hint</button>
       <button onClick={nextPuzzle}>Next Puzzle</button>
+      {analysis.visible && (
+        <button onClick={analysis.openAnalysis}>Analysis</button>
+      )}
       {resultStatus === 'complete' && <button>Finished!</button>}
       {resultStatus === 'incorrect' && <button>Incorrect!</button>}
     </div>

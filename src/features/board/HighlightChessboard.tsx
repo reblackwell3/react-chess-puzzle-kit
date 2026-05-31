@@ -32,6 +32,7 @@ export const HighlightChessboard = ({
   checkSquare,
   hintSquare,
   incorrectMoveSquare,
+  customSquareStyles: extraSquareStyles,
   ...props
 }: HighlightChessboardProps) => {
   const { customDarkSquareStyle, customLightSquareStyle } = useTheme();
@@ -40,7 +41,11 @@ export const HighlightChessboard = ({
     hintSquare,
     incorrectMoveSquare,
   );
-  const customSquareStyles = { ...checkStyles, ...feedbackStyles };
+  const customSquareStyles = {
+    ...checkStyles,
+    ...feedbackStyles,
+    ...extraSquareStyles,
+  };
 
   return (
     <Chessboard
