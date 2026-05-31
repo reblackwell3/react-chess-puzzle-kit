@@ -43,14 +43,20 @@
   },
   "dependencies": {
     "chess.js": "^1.0.0-beta.8",
-    "react": "^18.3.1",
-    "react-chessboard": "^4.7.1",
     "rollup": "^4.22.2",
     "rollup-plugin-peer-deps-external": "^2.2.4",
     "rollup-plugin-typescript2": "^0.36.0",
     "typescript": "^5.6.2"
   },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-chessboard": "^4.7.1",
+    "chess.js": "^1.0.0-beta.8"
+  },
   "devDependencies": {
+    "chess.js": "^1.0.0-beta.8",
+    "react": "^18.3.1",
+    "react-chessboard": "^4.7.1",
     "@chromatic-com/storybook": "^1.9.0",
     "@rollup/plugin-commonjs": "^26.0.1",
     "@rollup/plugin-node-resolve": "^15.2.3",
@@ -64,6 +70,7 @@
     "@storybook/react": "^8.2.9",
     "@storybook/react-vite": "^8.2.9",
     "@storybook/test": "^8.2.9",
+    "@types/react-dom": "^19.2.3",
     "@types/typescript": "^2.0.0",
     "@vitejs/plugin-react": "^4.3.1",
     "prop-types": "^15.8.1",

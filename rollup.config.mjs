@@ -1,9 +1,11 @@
+import { createRequire } from "node:module";
 import peerDepsExternal from "rollup-plugin-peer-deps-external";
 import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import typescript from "rollup-plugin-typescript2";
 
-import pkg from "./package.json" assert { type: "json" };
+const require = createRequire(import.meta.url);
+const pkg = require("./package.json");
 
 export default [
   {
@@ -25,6 +27,11 @@ export default [
       commonjs(),
       typescript({ useTsconfigDeclarationDir: true, clean: true }),
     ],
-    external: ["react", "react-dom"],
+    external: [
+      'react',
+      'react-dom',
+      'react-chessboard',
+      'chess.js',
+    ],
   },
 ];
