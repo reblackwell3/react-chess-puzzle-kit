@@ -1,5 +1,5 @@
 import { Traversable } from './Traversable';
-import { Chess } from 'chess.js';
+import { Chess, Square } from 'chess.js';
 import { PuzzleMoveRecord } from './moveHistory';
 
 export abstract class Position implements Traversable {
@@ -137,6 +137,17 @@ export class PuzzlePosition extends Position {
       actor: 'attempt',
       isCorrect: false,
     });
+  }
+
+  /** Chess-legal move from the current puzzle position (ignores solution line). */
+  isLegalMove(sourceSquare: string, targetSquare: string): boolean {
+    if (sourceSquare === targetSquare) {
+      return false;
+    }
+
+    return this.chess
+      .moves({ square: sourceSquare as Square, verbose: true })
+      .some((move) => move.to === targetSquare);
   }
 
   judgeGuess = (sourceSquare: string, targetSquare: string, piece: string) => {

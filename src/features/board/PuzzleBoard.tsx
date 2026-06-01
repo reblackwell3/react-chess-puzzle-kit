@@ -17,6 +17,10 @@ export const PuzzleBoard = ({
     targetSquare: string,
     piece: string,
   ) => {
+    if (!position.isLegalMove(sourceSquare, targetSquare)) {
+      return false;
+    }
+
     const isCorrect = position.judgeGuess(sourceSquare, targetSquare, piece);
     onFeedback({
       index: position.getIndex(),
