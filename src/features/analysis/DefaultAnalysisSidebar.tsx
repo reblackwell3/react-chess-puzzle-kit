@@ -60,8 +60,8 @@ export const DefaultAnalysisSidebar = ({
 );
 
 const sidebarStyle: React.CSSProperties = {
-  minWidth: 180,
-  flex: 1,
+  width: '100%',
+  height: '100%',
 };
 
 const navStyle: React.CSSProperties = {
@@ -81,8 +81,10 @@ const moveListStyle: React.CSSProperties = {
   margin: 0,
   padding: 0,
   display: 'flex',
-  flexWrap: 'wrap',
-  gap: 8,
+  flexDirection: 'column',
+  gap: 4,
+  maxHeight: 400,
+  overflowY: 'auto',
 };
 
 const moveItemStyle: React.CSSProperties = {
