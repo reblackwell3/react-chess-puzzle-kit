@@ -4,6 +4,7 @@ import { ChessboardDnDProvider } from 'react-chessboard';
 import { HighlightChessboard } from '../board/HighlightChessboard';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import { getAnalysisModalStyles } from '../theme/ThemeContext';
+import { getLastMoveSquareStyles } from '../theme/squareHighlightColors';
 import { DefaultAnalysisSidebar } from './DefaultAnalysisSidebar';
 import { AnalysisPosition } from './AnalysisPosition';
 import { PuzzleAnalysisContext } from './analysisContext';
@@ -24,11 +25,6 @@ export interface AnalysisBoardProps {
 const ANALYSIS_BOARD_WIDTH = 480;
 const ANALYSIS_SIDEBAR_WIDTH = 260;
 const ANALYSIS_BODY_GAP = 16;
-
-const getLastMoveHighlight = (from: string, to: string) => ({
-  [from]: { backgroundColor: 'rgba(255, 255, 0, 0.5)' },
-  [to]: { backgroundColor: 'rgba(255, 255, 0, 0.5)' },
-});
 
 export const AnalysisBoard = ({
   analysisContext,
@@ -87,7 +83,13 @@ export const AnalysisBoard = ({
               boardWidth={ANALYSIS_BOARD_WIDTH}
               arePiecesDraggable={false}
               customSquareStyles={
-                lastMove ? getLastMoveHighlight(lastMove.from, lastMove.to) : {}
+                lastMove
+                  ? getLastMoveSquareStyles(
+                      lastMove.from,
+                      lastMove.to,
+                      theme,
+                    )
+                  : {}
               }
             />
           </ChessboardDnDProvider>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { squareHighlightColors } from '../theme/squareHighlightColors';
 import { AnalysisSidebarRenderProps } from './renderProps';
 
 export const DefaultAnalysisSidebar = ({
@@ -6,8 +7,21 @@ export const DefaultAnalysisSidebar = ({
   ply,
   maxPly,
   onSelectPly,
-  theme: _theme,
-}: AnalysisSidebarRenderProps) => (
+  theme,
+}: AnalysisSidebarRenderProps) => {
+  const moveChipStyle: React.CSSProperties = {
+    cursor: 'pointer',
+    padding: '4px 8px',
+    borderRadius: 4,
+    backgroundColor: squareHighlightColors.sidebarMove[theme],
+  };
+  const activeMoveChipStyle: React.CSSProperties = {
+    ...moveChipStyle,
+    backgroundColor: squareHighlightColors.sidebarActiveMove[theme],
+    fontWeight: 600,
+  };
+
+  return (
   <div style={sidebarStyle}>
     <div style={navStyle}>
       <button type="button" onClick={() => onSelectPly(0)} disabled={ply === 0}>
@@ -41,7 +55,7 @@ export const DefaultAnalysisSidebar = ({
 
     <ol style={moveListStyle}>
       <li
-        style={ply === 0 ? activeMoveStyle : moveItemStyle}
+        style={ply === 0 ? activeMoveChipStyle : moveChipStyle}
         onClick={() => onSelectPly(0)}
       >
         Start
@@ -49,7 +63,7 @@ export const DefaultAnalysisSidebar = ({
       {moves.map((move) => (
         <li
           key={move.ply}
-          style={ply === move.ply ? activeMoveStyle : moveItemStyle}
+          style={ply === move.ply ? activeMoveChipStyle : moveChipStyle}
           onClick={() => onSelectPly(move.ply)}
         >
           {move.san}
@@ -57,7 +71,8 @@ export const DefaultAnalysisSidebar = ({
       ))}
     </ol>
   </div>
-);
+  );
+};
 
 const sidebarStyle: React.CSSProperties = {
   width: '100%',
@@ -85,17 +100,4 @@ const moveListStyle: React.CSSProperties = {
   gap: 4,
   maxHeight: 400,
   overflowY: 'auto',
-};
-
-const moveItemStyle: React.CSSProperties = {
-  cursor: 'pointer',
-  padding: '4px 8px',
-  borderRadius: 4,
-  backgroundColor: '#f0f0f0',
-};
-
-const activeMoveStyle: React.CSSProperties = {
-  ...moveItemStyle,
-  backgroundColor: '#77b1d4',
-  fontWeight: 600,
 };

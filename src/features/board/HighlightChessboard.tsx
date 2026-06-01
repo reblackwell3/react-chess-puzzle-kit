@@ -1,9 +1,10 @@
 import { useTheme } from '../theme/ThemeContext';
+import { squareHighlightColors } from '../theme/squareHighlightColors';
 import { Chessboard } from 'react-chessboard';
 
 const getCheckHighlighting = (checkSquare: string) => {
-  const styles: Record<string, any> = {};
-  styles[checkSquare] = { backgroundColor: 'red' };
+  const styles: Record<string, { backgroundColor: string }> = {};
+  styles[checkSquare] = { backgroundColor: squareHighlightColors.check };
   return styles;
 };
 
@@ -11,12 +12,14 @@ const getFeedbackHighlighting = (
   hintSquare: string | null,
   incorrectMoveSquare: string | null,
 ) => {
-  const styles: Record<string, any> = {};
+  const styles: Record<string, { backgroundColor: string }> = {};
   if (hintSquare) {
-    styles[hintSquare] = { backgroundColor: '#77b1d4' };
+    styles[hintSquare] = { backgroundColor: squareHighlightColors.hint };
   }
   if (incorrectMoveSquare) {
-    styles[incorrectMoveSquare] = { backgroundColor: '#ff7f7f' };
+    styles[incorrectMoveSquare] = {
+      backgroundColor: squareHighlightColors.incorrect,
+    };
   }
   return styles;
 };
