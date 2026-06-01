@@ -38,11 +38,12 @@ export const AnalysisBoard = ({
     () => new AnalysisPosition(analysisContext),
     [analysisContext],
   );
-  const [ply, setPly] = useState(analysisContext.solutionMoves.length);
+  const [navRevision, setNavRevision] = useState(0);
+  const bumpNav = () => setNavRevision((value) => value + 1);
 
   useEffect(() => {
-    analysisPosition.goToPly(analysisContext.solutionMoves.length);
-    setPly(analysisContext.solutionMoves.length);
+    analysisPosition.goToNavPly(analysisContext.solutionMoves.length);
+    bumpNav();
 
     skipBackdropCloseRef.current = true;
     const frameId = requestAnimationFrame(() => {
@@ -53,9 +54,29 @@ export const AnalysisBoard = ({
   }, [analysisContext, analysisPosition]);
 
   const syncPly = (nextPly: number) => {
-    analysisPosition.goToPly(nextPly);
-    setPly(nextPly);
+    analysisPosition.goToNavPly(nextPly);
+    bumpNav();
   };
+
+  const handleAnalysisDrop = (
+    sourceSquare: string,
+    targetSquare: string,
+    piece: string,
+  ) => {
+    if (
+      !analysisPosition.tryPlayMove(sourceSquare, targetSquare, piece)
+    ) {
+      return false;
+    }
+
+    bumpNav();
+    return true;
+  };
+
+  void navRevision;
+  const ply = analysisPosition.getNavPly();
+  const maxPly = analysisPosition.getMaxNavPly();
+  const historyRows = analysisPosition.getHistoryRows();
 
   const lastMove = analysisPosition.getLastMoveSquares();
   const Sidebar = renderSidebar ?? DefaultAnalysisSidebar;
@@ -81,7 +102,9 @@ export const AnalysisBoard = ({
               position={analysisPosition.fen()}
               boardOrientation={analysisContext.boardOrientation}
               boardWidth={ANALYSIS_BOARD_WIDTH}
-              arePiecesDraggable={false}
+              arePiecesDraggable={true}
+              onPieceDrop={handleAnalysisDrop}
+              promotionDialogVariant="modal"
               customSquareStyles={
                 lastMove
                   ? getLastMoveSquareStyles(
@@ -99,8 +122,16 @@ export const AnalysisBoard = ({
       <div style={sidebarCellStyle}>
         <Sidebar
           moves={analysisPosition.getSolutionSans()}
+          historyRows={historyRows}
+          isHistoryRowSelected={(row) =>
+            analysisPosition.isHistoryRowSelected(row)
+          }
+          onSelectHistoryRow={(row) => {
+            analysisPosition.selectHistoryRow(row);
+            bumpNav();
+          }}
           ply={ply}
-          maxPly={analysisPosition.getMaxPly()}
+          maxPly={maxPly}
           onSelectPly={syncPly}
           theme={theme}
         />

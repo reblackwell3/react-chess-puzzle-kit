@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react';
-import { SolutionMoveDisplay } from './AnalysisPosition';
+import {
+  AnalysisHistoryRow,
+  SolutionMoveDisplay,
+} from './AnalysisPosition';
 
 export type AnalysisControls = {
   visible: boolean;
@@ -7,7 +10,11 @@ export type AnalysisControls = {
 };
 
 export type AnalysisSidebarRenderProps = {
+  /** Main-line moves (legacy; prefer historyRows). */
   moves: SolutionMoveDisplay[];
+  historyRows: AnalysisHistoryRow[];
+  isHistoryRowSelected: (row: AnalysisHistoryRow) => boolean;
+  onSelectHistoryRow: (row: AnalysisHistoryRow) => void;
   ply: number;
   maxPly: number;
   onSelectPly: (ply: number) => void;

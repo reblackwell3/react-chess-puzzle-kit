@@ -3,7 +3,9 @@ import { squareHighlightColors } from '../theme/squareHighlightColors';
 import { AnalysisSidebarRenderProps } from './renderProps';
 
 export const DefaultAnalysisSidebar = ({
-  moves,
+  historyRows,
+  isHistoryRowSelected,
+  onSelectHistoryRow,
   ply,
   maxPly,
   onSelectPly,
@@ -20,57 +22,74 @@ export const DefaultAnalysisSidebar = ({
     backgroundColor: squareHighlightColors.sidebarActiveMove[theme],
     fontWeight: 600,
   };
+  const variationChipStyle: React.CSSProperties = {
+    ...moveChipStyle,
+    fontStyle: 'italic',
+  };
+  const activeVariationChipStyle: React.CSSProperties = {
+    ...activeMoveChipStyle,
+    fontStyle: 'italic',
+  };
 
   return (
-  <div style={sidebarStyle}>
-    <div style={navStyle}>
-      <button type="button" onClick={() => onSelectPly(0)} disabled={ply === 0}>
-        |◀
-      </button>
-      <button
-        type="button"
-        onClick={() => onSelectPly(ply - 1)}
-        disabled={ply === 0}
-      >
-        ◀
-      </button>
-      <span style={plyLabelStyle}>
-        {ply} / {maxPly}
-      </span>
-      <button
-        type="button"
-        onClick={() => onSelectPly(ply + 1)}
-        disabled={ply === maxPly}
-      >
-        ▶
-      </button>
-      <button
-        type="button"
-        onClick={() => onSelectPly(maxPly)}
-        disabled={ply === maxPly}
-      >
-        ▶|
-      </button>
-    </div>
-
-    <ol style={moveListStyle}>
-      <li
-        style={ply === 0 ? activeMoveChipStyle : moveChipStyle}
-        onClick={() => onSelectPly(0)}
-      >
-        Start
-      </li>
-      {moves.map((move) => (
-        <li
-          key={move.ply}
-          style={ply === move.ply ? activeMoveChipStyle : moveChipStyle}
-          onClick={() => onSelectPly(move.ply)}
+    <div style={sidebarStyle}>
+      <div style={navStyle}>
+        <button type="button" onClick={() => onSelectPly(0)} disabled={ply === 0}>
+          |◀
+        </button>
+        <button
+          type="button"
+          onClick={() => onSelectPly(ply - 1)}
+          disabled={ply === 0}
         >
-          {move.san}
-        </li>
-      ))}
-    </ol>
-  </div>
+          ◀
+        </button>
+        <span style={plyLabelStyle}>
+          {ply} / {maxPly}
+        </span>
+        <button
+          type="button"
+          onClick={() => onSelectPly(ply + 1)}
+          disabled={ply >= maxPly}
+        >
+          ▶
+        </button>
+        <button
+          type="button"
+          onClick={() => onSelectPly(maxPly)}
+          disabled={ply >= maxPly}
+        >
+          ▶|
+        </button>
+      </div>
+
+      <ol style={moveListStyle}>
+        {historyRows.map((row) => {
+          const isSelected = isHistoryRowSelected(row);
+          const isVariation = row.kind === 'variation';
+          const style = isSelected
+            ? isVariation
+              ? activeVariationChipStyle
+              : activeMoveChipStyle
+            : isVariation
+              ? variationChipStyle
+              : moveChipStyle;
+
+          return (
+            <li
+              key={row.key}
+              style={{
+                ...style,
+                marginLeft: row.indent * 16,
+              }}
+              onClick={() => onSelectHistoryRow(row)}
+            >
+              {row.label}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 };
 
