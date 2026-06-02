@@ -1,4 +1,5 @@
 export * from './features/analysis';
+export * from './features/engine';
 export * from './features/board/HighlightChessboard';
 export * from './features/board/PuzzleBoard';
 export * from './features/board/PuzzleBoardWithControls';

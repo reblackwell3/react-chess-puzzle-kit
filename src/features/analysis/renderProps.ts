@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { EngineEvaluation } from '../engine/types';
 import {
   AnalysisHistoryRow,
   SolutionMoveDisplay,
@@ -7,6 +8,12 @@ import {
 export type AnalysisControls = {
   visible: boolean;
   openAnalysis: () => void;
+};
+
+export type EngineEvaluationRenderProps = {
+  fen: string;
+  evaluation: EngineEvaluation;
+  theme: 'light' | 'dark';
 };
 
 export type AnalysisSidebarRenderProps = {
@@ -19,6 +26,8 @@ export type AnalysisSidebarRenderProps = {
   maxPly: number;
   onSelectPly: (ply: number) => void;
   theme: 'light' | 'dark';
+  /** Host-rendered engine UI from `renderEngineEvaluation`. */
+  engineEvaluationPanel: ReactNode | null;
 };
 
 export type AnalysisContainerRenderProps = {

@@ -6,7 +6,11 @@ import {
   PuzzleResultStatus,
   usePuzzleAnalysis,
 } from '../analysis';
-import { AnalysisControls } from '../analysis/renderProps';
+import { AnalysisEngineOptions } from '../engine/types';
+import {
+  AnalysisControls,
+  EngineEvaluationRenderProps,
+} from '../analysis/renderProps';
 import { PuzzleBoard } from './PuzzleBoard';
 import { PuzzlePosition } from '../position/Position';
 import { ThemeProvider } from '../theme/ThemeProvider';
@@ -15,6 +19,7 @@ export type {
   AnalysisContainerRenderProps,
   AnalysisControls,
   AnalysisSidebarRenderProps,
+  EngineEvaluationRenderProps,
   PuzzleAnalysisContext,
   PuzzleResultStatus,
 } from '../analysis';
@@ -43,6 +48,10 @@ export interface PuzzleBoardWithControlsProps {
   renderAnalysisContainer?: (
     props: AnalysisContainerRenderProps,
   ) => React.ReactNode;
+  renderEngineEvaluation?: (
+    props: EngineEvaluationRenderProps,
+  ) => React.ReactNode;
+  engine?: AnalysisEngineOptions;
 }
 
 export const PuzzleBoardWithControls = ({
@@ -51,6 +60,8 @@ export const PuzzleBoardWithControls = ({
   renderControls,
   renderAnalysisSidebar,
   renderAnalysisContainer,
+  renderEngineEvaluation,
+  engine,
 }: PuzzleBoardWithControlsProps) => {
   const { onFetch, onFeedback } = apiProxy;
 
@@ -138,8 +149,10 @@ export const PuzzleBoardWithControls = ({
           analysisContext={analysisSnapshot}
           onClose={analysis.closeAnalysis}
           theme={theme}
+          engine={engine}
           renderSidebar={renderAnalysisSidebar}
           renderContainer={renderAnalysisContainer}
+          renderEngineEvaluation={renderEngineEvaluation}
         />
       ) : (
         position && (

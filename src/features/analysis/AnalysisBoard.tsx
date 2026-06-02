@@ -5,33 +5,46 @@ import { HighlightChessboard } from '../board/HighlightChessboard';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import { getAnalysisModalStyles } from '../theme/ThemeContext';
 import { getLastMoveSquareStyles } from '../theme/squareHighlightColors';
+import { EngineEvaluationPanel } from '../engine/EngineEvaluationPanel';
 import { DefaultAnalysisSidebar } from './DefaultAnalysisSidebar';
 import { AnalysisPosition } from './AnalysisPosition';
 import { PuzzleAnalysisContext } from './analysisContext';
 import {
+  AnalysisEngineOptions,
+  DEFAULT_STOCKFISH_SCRIPT_URL,
+  useAnalysisEngine,
+} from '../engine';
+import {
   AnalysisContainerRenderProps,
   AnalysisSidebarRenderProps,
+  EngineEvaluationRenderProps,
 } from './renderProps';
 
 export interface AnalysisBoardProps {
   analysisContext: PuzzleAnalysisContext;
   onClose: () => void;
   theme: 'light' | 'dark';
+  engine?: AnalysisEngineOptions;
   renderSidebar?: (props: AnalysisSidebarRenderProps) => React.ReactNode;
   renderContainer?: (props: AnalysisContainerRenderProps) => React.ReactNode;
+  renderEngineEvaluation?: (
+    props: EngineEvaluationRenderProps,
+  ) => React.ReactNode;
 }
 
-/** Match MUI sidebar width in endchess-frontend `PuzzleAnalysisSidebar`. */
+/** Match sidebar width in endchess-frontend `PuzzleAnalysisSidebar` (moves + engine columns). */
 const ANALYSIS_BOARD_WIDTH = 480;
-const ANALYSIS_SIDEBAR_WIDTH = 260;
+const ANALYSIS_SIDEBAR_WIDTH = 500;
 const ANALYSIS_BODY_GAP = 16;
 
 export const AnalysisBoard = ({
   analysisContext,
   onClose,
   theme,
+  engine,
   renderSidebar,
   renderContainer,
+  renderEngineEvaluation,
 }: AnalysisBoardProps) => {
   const skipBackdropCloseRef = useRef(true);
   const analysisPosition = useMemo(
@@ -77,10 +90,30 @@ export const AnalysisBoard = ({
   const ply = analysisPosition.getNavPly();
   const maxPly = analysisPosition.getMaxNavPly();
   const historyRows = analysisPosition.getHistoryRows();
+  const fen = analysisPosition.fen();
+  const engineEvaluation = useAnalysisEngine(fen, {
+    enabled: engine?.enabled ?? true,
+    depth: engine?.depth ?? 16,
+    multiPv: engine?.multiPv ?? 2,
+    scriptUrl: engine?.scriptUrl ?? DEFAULT_STOCKFISH_SCRIPT_URL,
+  });
 
   const lastMove = analysisPosition.getLastMoveSquares();
   const Sidebar = renderSidebar ?? DefaultAnalysisSidebar;
   const modalTheme = getAnalysisModalStyles(theme);
+  const engineEnabled = engine?.enabled ?? true;
+  const engineEvaluationPanel =
+    engineEnabled && renderEngineEvaluation
+      ? renderEngineEvaluation({ fen, evaluation: engineEvaluation, theme })
+      : engineEnabled && !renderEngineEvaluation
+        ? (
+            <EngineEvaluationPanel
+              fen={fen}
+              evaluation={engineEvaluation}
+              theme={theme}
+            />
+          )
+        : null;
 
   const handleBackdropClick = () => {
     if (skipBackdropCloseRef.current) {
@@ -134,6 +167,7 @@ export const AnalysisBoard = ({
           maxPly={maxPly}
           onSelectPly={syncPly}
           theme={theme}
+          engineEvaluationPanel={engineEvaluationPanel}
         />
       </div>
     </div>

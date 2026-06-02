@@ -1,4 +1,5 @@
 import { Chess, Square } from 'chess.js';
+import { uciPvToSan } from '../engine/formatEvaluation';
 import { getCheckSquareFromChess } from '../position/Position';
 import { PuzzleAnalysisContext } from './analysisContext';
 
@@ -56,14 +57,6 @@ export class AnalysisPosition {
         uci,
         san: move?.san ?? uci,
       };
-    });
-  }
-
-  private static buildSansFromUci(fen: string, uciMoves: string[]): string[] {
-    const chess = new Chess(fen);
-    return uciMoves.map((uci) => {
-      const move = chess.move(uci);
-      return move?.san ?? uci;
     });
   }
 
@@ -289,7 +282,7 @@ export class AnalysisPosition {
     this.variation = {
       branchPly,
       moves: nextMoves,
-      sans: AnalysisPosition.buildSansFromUci(fenAtBranch, nextMoves),
+      sans: uciPvToSan(fenAtBranch, nextMoves),
     };
     this.mainPly = branchPly;
     this.variationCursor = nextMoves.length;
