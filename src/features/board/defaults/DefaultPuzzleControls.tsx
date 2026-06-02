@@ -61,7 +61,9 @@ const rowStyle: React.CSSProperties = {
   flexWrap: 'wrap',
   alignItems: 'center',
   gap: 8,
-  marginTop: 12,
+  width: '100%',
+  minHeight: 96,
+  alignContent: 'flex-start',
 };
 
 const buttonStyle: React.CSSProperties = {

@@ -15,8 +15,14 @@ import {
 } from '../analysis';
 import { AnalysisEngineOptions } from '../engine/types';
 import { defaultRenderControls } from './defaults/DefaultPuzzleControls';
+import { BlankPuzzleBoard } from './BlankPuzzleBoard';
 import { PuzzleBoard } from './PuzzleBoard';
-import { DEFAULT_PUZZLE_BOARD_WIDTH } from './puzzleBoardLayout';
+import {
+  DEFAULT_PUZZLE_BOARD_WIDTH,
+  puzzleBoardSlotStyle,
+  puzzleControlsSlotStyle,
+  puzzlePlayColumnStyle,
+} from './puzzleBoardLayout';
 import { PuzzlePosition } from '../position/Position';
 import { ThemeProvider } from '../theme/ThemeProvider';
 export type { PuzzleMoveRecord } from '../position/moveHistory';
@@ -106,8 +112,6 @@ export const PuzzleBoardWithControls = ({
     let cancelled = false;
     let openingMoveTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
-    setHasIncorrectAttempt(false);
-    setPuzzleComplete(false);
     setPosition(null);
     onFetch().then((data) => {
       if (cancelled) {
@@ -117,6 +121,8 @@ export const PuzzleBoardWithControls = ({
         console.error('Invalid data fetched:', data);
         return;
       }
+      setHasIncorrectAttempt(false);
+      setPuzzleComplete(false);
       const newPosition = new PuzzlePosition(data.fen, data.moves);
       setPosition(newPosition);
       openingMoveTimeoutId = setTimeout(() => {
@@ -155,6 +161,12 @@ export const PuzzleBoardWithControls = ({
 
   const getResultStatus = (): PuzzleResultStatus => {
     if (!position) {
+      if (hasIncorrectAttempt) {
+        return 'incorrect';
+      }
+      if (puzzleComplete) {
+        return 'complete';
+      }
       return 'none';
     }
     if (hasIncorrectAttempt) {
@@ -235,28 +247,28 @@ export const PuzzleBoardWithControls = ({
             renderEngineEvaluation={renderEngineEvaluation}
           />
         )
-      ) : position ? (
-          <PuzzleBoard
-            key={puzzleNum}
-            position={position}
-            boardWidth={puzzleBoardWidth}
-            onFeedback={handleFeedback}
-            incInteractionNum={incInteractionNum}
-          />
-        ) : (
-          <div
-            style={{
-              width: puzzleBoardWidth,
-              maxWidth: '100%',
-              aspectRatio: '1 / 1',
-            }}
-            aria-hidden
-          />
-        )}
-      {renderControls(handleHintRequest, handleNextPuzzle, resultStatus, {
-        visible: analysis.canOpen,
-        openAnalysis: analysis.openAnalysis,
-      })}
+      ) : (
+        <div style={puzzlePlayColumnStyle(puzzleBoardWidth)}>
+          <div style={puzzleBoardSlotStyle()}>
+            {position ? (
+              <PuzzleBoard
+                position={position}
+                boardWidth={puzzleBoardWidth}
+                onFeedback={handleFeedback}
+                incInteractionNum={incInteractionNum}
+              />
+            ) : (
+              <BlankPuzzleBoard boardWidth={puzzleBoardWidth} />
+            )}
+          </div>
+          <div style={puzzleControlsSlotStyle()}>
+            {renderControls(handleHintRequest, handleNextPuzzle, resultStatus, {
+              visible: analysis.canOpen,
+              openAnalysis: analysis.openAnalysis,
+            })}
+          </div>
+        </div>
+      )}
     </ThemeProvider>
   );
 };
