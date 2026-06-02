@@ -1,7 +1,7 @@
 {
-  "name": "react-chessboard-with-controls",
-  "version": "0.3.2",
-  "description": "The React Chessboard with Controls used at endchess.training",
+  "name": "react-chess-puzzle-kit",
+  "version": "1.0.0",
+  "description": "React chess puzzle kit: play, controls, analysis, and browser Stockfish for endchess.training and other apps",
   "license": "MIT",
   "author": "Robert Blackwell",
   "main": "dist/index.js",
@@ -9,24 +9,22 @@
   "types": "dist/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/reblackwell3/react-chessboard-with-controls.git"
+    "url": "git+https://github.com/reblackwell3/react-chess-puzzle-kit.git"
   },
   "bugs": {
-    "url": "https://github.com/reblackwell3/react-chessboard-with-controls/issues"
+    "url": "https://github.com/reblackwell3/react-chess-puzzle-kit/issues"
   },
-  "homepage": "https://github.com/reblackwell3/react-chessboard-with-controls#readme",
+  "homepage": "https://github.com/reblackwell3/react-chess-puzzle-kit#readme",
   "keywords": [
     "react",
-    "react.js",
     "chess",
     "chess.js",
-    "chessboard",
-    "chess board",
+    "chess puzzle",
+    "puzzle",
+    "analysis",
+    "stockfish",
     "react-chessboard",
-    "react chessboard",
-    "react chess board",
-    "react-dnd",
-    "chessboard component",
+    "chessboard",
     "drag and drop"
   ],
   "files": [
