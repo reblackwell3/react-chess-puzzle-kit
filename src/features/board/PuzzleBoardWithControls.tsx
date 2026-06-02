@@ -14,6 +14,7 @@ import {
   usePuzzleAnalysis,
 } from '../analysis';
 import { AnalysisEngineOptions } from '../engine/types';
+import { defaultRenderControls } from './defaults/DefaultPuzzleControls';
 import { PuzzleBoard } from './PuzzleBoard';
 import { DEFAULT_PUZZLE_BOARD_WIDTH } from './puzzleBoardLayout';
 import { PuzzlePosition } from '../position/Position';
@@ -31,6 +32,11 @@ export type {
 } from '../analysis';
 export { DEFAULT_ANALYSIS_LAYOUT } from '../analysis';
 export { DEFAULT_PUZZLE_BOARD_WIDTH } from './puzzleBoardLayout';
+export {
+  DefaultPuzzleControls,
+  defaultRenderControls,
+} from './defaults/DefaultPuzzleControls';
+export type { PuzzleControlsRenderProps } from './defaults/DefaultPuzzleControls';
 
 export interface PuzzleBoardWithControlsProps {
   theme: 'light' | 'dark';
@@ -44,7 +50,8 @@ export interface PuzzleBoardWithControlsProps {
       isFinished?: boolean;
     }) => void;
   };
-  renderControls: (
+  /** Omit to use {@link defaultRenderControls} / {@link DefaultPuzzleControls}. */
+  renderControls?: (
     showHint: () => void,
     nextPuzzle: () => void,
     resultStatus: PuzzleResultStatus,
@@ -71,7 +78,7 @@ export interface PuzzleBoardWithControlsProps {
 export const PuzzleBoardWithControls = ({
   theme,
   apiProxy,
-  renderControls,
+  renderControls = defaultRenderControls,
   renderAnalysisSidebar,
   renderAnalysisContainer,
   renderEngineEvaluation,
