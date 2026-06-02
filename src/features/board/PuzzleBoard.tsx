@@ -26,6 +26,12 @@ export const PuzzleBoard = ({
 
     const guess = position.tryGuess(sourceSquare, targetSquare, piece);
     if (!guess.accepted) {
+      onFeedback({
+        index: position.getIndex(),
+        guess: { sourceSquare, targetSquare, piece },
+        isCorrect: false,
+      });
+      incInteractionNum();
       return false;
     }
 
