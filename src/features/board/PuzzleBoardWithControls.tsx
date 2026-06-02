@@ -1,28 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import {
   AnalysisBoard,
+  AnalysisBoardCore,
+  AnalysisBoardLayout,
   AnalysisContainerRenderProps,
+  AnalysisControls,
+  AnalysisLayoutConfig,
+  AnalysisMainRenderProps,
   AnalysisSidebarRenderProps,
+  DEFAULT_ANALYSIS_LAYOUT,
+  EngineEvaluationRenderProps,
   PuzzleResultStatus,
   usePuzzleAnalysis,
 } from '../analysis';
 import { AnalysisEngineOptions } from '../engine/types';
-import {
-  AnalysisControls,
-  EngineEvaluationRenderProps,
-} from '../analysis/renderProps';
 import { PuzzleBoard } from './PuzzleBoard';
+import { DEFAULT_PUZZLE_BOARD_WIDTH } from './puzzleBoardLayout';
 import { PuzzlePosition } from '../position/Position';
 import { ThemeProvider } from '../theme/ThemeProvider';
 export type { PuzzleMoveRecord } from '../position/moveHistory';
 export type {
   AnalysisContainerRenderProps,
   AnalysisControls,
+  AnalysisLayoutConfig,
+  AnalysisMainRenderProps,
   AnalysisSidebarRenderProps,
   EngineEvaluationRenderProps,
   PuzzleAnalysisContext,
   PuzzleResultStatus,
 } from '../analysis';
+export { DEFAULT_ANALYSIS_LAYOUT } from '../analysis';
+export { DEFAULT_PUZZLE_BOARD_WIDTH } from './puzzleBoardLayout';
 
 export interface PuzzleBoardWithControlsProps {
   theme: 'light' | 'dark';
@@ -51,6 +59,12 @@ export interface PuzzleBoardWithControlsProps {
   renderEngineEvaluation?: (
     props: EngineEvaluationRenderProps,
   ) => React.ReactNode;
+  /** Pixel width of the live puzzle board (separate from analysis). */
+  puzzleBoardWidth?: number;
+  /** Board + sidebar grid sizes when analysis is open. */
+  analysisLayout?: AnalysisLayoutConfig;
+  /** Custom board/sidebar placement (overrides {@link analysisLayout} grid). */
+  renderAnalysisMain?: (props: AnalysisMainRenderProps) => React.ReactNode;
   engine?: AnalysisEngineOptions;
 }
 
@@ -61,6 +75,9 @@ export const PuzzleBoardWithControls = ({
   renderAnalysisSidebar,
   renderAnalysisContainer,
   renderEngineEvaluation,
+  puzzleBoardWidth = DEFAULT_PUZZLE_BOARD_WIDTH,
+  analysisLayout = DEFAULT_ANALYSIS_LAYOUT,
+  renderAnalysisMain,
   engine,
 }: PuzzleBoardWithControlsProps) => {
   const { onFetch, onFeedback } = apiProxy;
@@ -142,22 +159,57 @@ export const PuzzleBoardWithControls = ({
   const analysisSnapshot =
     analysis.isOpen && analysis.snapshot ? analysis.snapshot : null;
 
+  const useHostAnalysisUi = Boolean(
+    renderAnalysisSidebar &&
+      renderAnalysisContainer &&
+      (renderEngineEvaluation || engine?.enabled === false),
+  );
+
   return (
     <ThemeProvider theme={theme}>
       {analysisSnapshot ? (
-        <AnalysisBoard
-          analysisContext={analysisSnapshot}
-          onClose={analysis.closeAnalysis}
-          theme={theme}
-          engine={engine}
-          renderSidebar={renderAnalysisSidebar}
-          renderContainer={renderAnalysisContainer}
-          renderEngineEvaluation={renderEngineEvaluation}
-        />
+        useHostAnalysisUi ? (
+          <AnalysisBoardCore
+            analysisContext={analysisSnapshot}
+            onClose={analysis.closeAnalysis}
+            theme={theme}
+            boardWidth={analysisLayout.boardWidth}
+            engine={engine}
+            renderMain={
+              renderAnalysisMain ??
+              (({ board, sidebar, model }) => (
+                <AnalysisBoardLayout
+                  layout={analysisLayout}
+                  model={model}
+                  board={board}
+                  sidebar={sidebar}
+                />
+              ))
+            }
+            renderSidebar={renderAnalysisSidebar!}
+            renderContainer={renderAnalysisContainer!}
+            renderEngineEvaluation={
+              renderEngineEvaluation ?? (() => null)
+            }
+          />
+        ) : (
+          <AnalysisBoard
+            analysisContext={analysisSnapshot}
+            onClose={analysis.closeAnalysis}
+            theme={theme}
+            layout={analysisLayout}
+            engine={engine}
+            renderMain={renderAnalysisMain}
+            renderSidebar={renderAnalysisSidebar}
+            renderContainer={renderAnalysisContainer}
+            renderEngineEvaluation={renderEngineEvaluation}
+          />
+        )
       ) : (
         position && (
           <PuzzleBoard
             position={position}
+            boardWidth={puzzleBoardWidth}
             onFeedback={handleFeedback}
             incInteractionNum={incInteractionNum}
           />

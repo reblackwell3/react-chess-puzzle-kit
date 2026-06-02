@@ -1,6 +1,6 @@
 import React from 'react';
-import { squareHighlightColors } from '../theme/squareHighlightColors';
-import { AnalysisSidebarRenderProps } from './renderProps';
+import { squareHighlightColors } from '../../theme/squareHighlightColors';
+import { AnalysisSidebarRenderProps } from '../core/renderProps';
 
 export const DefaultAnalysisSidebar = ({
   historyRows,

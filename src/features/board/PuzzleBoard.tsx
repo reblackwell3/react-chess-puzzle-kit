@@ -5,12 +5,14 @@ export interface PuzzleBoardProps {
   position: PuzzlePosition;
   onFeedback: (feedbackData: any) => void;
   incInteractionNum: () => void;
+  boardWidth: number;
 }
 
 export const PuzzleBoard = ({
   position,
   onFeedback,
   incInteractionNum,
+  boardWidth,
 }: PuzzleBoardProps) => {
   const onPieceDrop = (
     sourceSquare: string,
@@ -47,6 +49,7 @@ export const PuzzleBoard = ({
 
   return (
     <HighlightChessboard
+      boardWidth={boardWidth}
       checkSquare={position.getCheckSquare()}
       hintSquare={position.getHintSquare()}
       incorrectMoveSquare={position.getIncorrectMoveSquare()}

@@ -1,5 +1,5 @@
-import { PuzzleMoveRecord } from '../position/moveHistory';
-import { PuzzlePosition } from '../position/Position';
+import { PuzzleMoveRecord } from '../../position/moveHistory';
+import { PuzzlePosition } from '../../position/Position';
 
 export type PuzzleResultStatus = 'none' | 'incorrect' | 'complete';
 

@@ -1,5 +1,6 @@
 import { Meta, StoryObj } from '@storybook/react';
 import { PuzzleBoard } from '../features/board/PuzzleBoard';
+import { DEFAULT_PUZZLE_BOARD_WIDTH } from '../features/board/puzzleBoardLayout';
 import { PuzzlePosition } from '../features/position/Position';
 import withThemeProvider from './withThemeProvider';
 
@@ -23,6 +24,9 @@ const defaultPosition = new PuzzlePosition(
 export const Default: Story = {
   args: {
     position: defaultPosition,
+    boardWidth: DEFAULT_PUZZLE_BOARD_WIDTH,
+    onFeedback: () => {},
+    incInteractionNum: () => {},
   },
 };
 

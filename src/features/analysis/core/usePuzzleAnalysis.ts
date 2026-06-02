@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { PuzzlePosition } from '../position/Position';
+import { PuzzlePosition } from '../../position/Position';
 import { PuzzleResultStatus } from './analysisContext';
 import {
   buildAnalysisContext,

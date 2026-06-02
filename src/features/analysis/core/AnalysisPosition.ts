@@ -1,6 +1,6 @@
 import { Chess, Square } from 'chess.js';
-import { uciPvToSan } from '../engine/formatEvaluation';
-import { getCheckSquareFromChess } from '../position/Position';
+import { uciPvToSan } from '../../engine/formatEvaluation';
+import { getCheckSquareFromChess } from '../../position/Position';
 import { PuzzleAnalysisContext } from './analysisContext';
 
 export type SolutionMoveDisplay = {

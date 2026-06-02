@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
-import { EngineEvaluation } from '../engine/types';
+import { EngineEvaluation } from '../../engine/types';
 import {
   AnalysisHistoryRow,
   SolutionMoveDisplay,
 } from './AnalysisPosition';
+import { AnalysisBoardModel } from './useAnalysisBoardModel';
 
 export type AnalysisControls = {
   visible: boolean;
@@ -34,4 +35,13 @@ export type AnalysisContainerRenderProps = {
   theme: 'light' | 'dark';
   onClose: () => void;
   children: ReactNode;
+  /** Used by {@link DefaultAnalysisContainer} for overlay dismiss (ignored by most hosts). */
+  onBackdropMouseDown?: () => void;
+};
+
+/** Place board + sidebar inside the analysis shell (host or default grid). */
+export type AnalysisMainRenderProps = {
+  model: AnalysisBoardModel;
+  board: ReactNode;
+  sidebar: ReactNode;
 };
