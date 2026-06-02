@@ -1,3 +1,4 @@
+import { ChessboardDnDProvider } from 'react-chessboard';
 import { HighlightChessboard } from './HighlightChessboard';
 import { PuzzlePosition } from '../position/Position';
 
@@ -48,15 +49,17 @@ export const PuzzleBoard = ({
   };
 
   return (
-    <HighlightChessboard
-      boardWidth={boardWidth}
-      checkSquare={position.getCheckSquare()}
-      hintSquare={position.getHintSquare()}
-      incorrectMoveSquare={position.getIncorrectMoveSquare()}
-      onPieceDrop={onPieceDrop}
-      position={position.fen()}
-      boardOrientation={position.getPlayerColor()}
-      promotionDialogVariant="modal"
-    />
+    <ChessboardDnDProvider>
+      <HighlightChessboard
+        boardWidth={boardWidth}
+        checkSquare={position.getCheckSquare()}
+        hintSquare={position.getHintSquare()}
+        incorrectMoveSquare={position.getIncorrectMoveSquare()}
+        onPieceDrop={onPieceDrop}
+        position={position.fen()}
+        boardOrientation={position.getPlayerColor()}
+        promotionDialogVariant="modal"
+      />
+    </ChessboardDnDProvider>
   );
 };
