@@ -85,6 +85,7 @@ export class PuzzlePosition extends Position {
   protected playerColor: string;
   protected readonly initialFen: string;
   protected moveHistory: PuzzleMoveRecord[] = [];
+  private usedAlternativeCheckmate = false;
 
   constructor(initialFEN: string, moves: string[]) {
     super();
@@ -150,36 +151,111 @@ export class PuzzlePosition extends Position {
       .some((move) => move.to === targetSquare);
   }
 
-  judgeGuess = (sourceSquare: string, targetSquare: string, piece: string) => {
+  private buildCandidateUcis(
+    sourceSquare: string,
+    targetSquare: string,
+    piece: string,
+  ): string[] {
     const move = `${sourceSquare}${targetSquare}`;
-    const promotionPiece = piece[1].toLowerCase(); // 'wN' -> 'n'
-    const moveWithPromotionPiece = `${move}${promotionPiece}`;
-    const isCorrect =
-      this.judgeMove(move) || this.judgeMove(moveWithPromotionPiece);
-    this.isCorrect = isCorrect;
+    const promotionPiece = piece[1].toLowerCase();
+    const moveWithPromotion = `${move}${promotionPiece}`;
 
-    if (!isCorrect) {
-      this.moveHistory.push({
-        ply: this.moveHistory.length,
-        uci: moveWithPromotionPiece.length > move.length
-          ? moveWithPromotionPiece
-          : move,
-        actor: 'attempt',
-        isCorrect: false,
-      });
+    return move === moveWithPromotion
+      ? [move]
+      : [move, moveWithPromotion];
+  }
+
+  private tryMakeUciMove(chess: Chess, uci: string) {
+    const from = uci.slice(0, 2) as Square;
+    const to = uci.slice(2, 4) as Square;
+    const promotion = uci.length > 4 ? uci[4] : undefined;
+
+    try {
+      return chess.move({ from, to, promotion });
+    } catch {
+      return null;
+    }
+  }
+
+  private isCheckmatingMove(uci: string): boolean {
+    const chess = new Chess(this.chess.fen());
+
+    return (
+      this.tryMakeUciMove(chess, uci) !== null && chess.isCheckmate()
+    );
+  }
+
+  private applyCheckmateGuess(uci: string): boolean {
+    const result = this.tryMakeUciMove(this.chess, uci);
+    if (result === null || !this.chess.isCheckmate()) {
+      return false;
     }
 
-    return isCorrect;
+    this.moveHistory.push({
+      ply: this.moveHistory.length,
+      uci,
+      san: result.san,
+      actor: 'player',
+      isCorrect: true,
+    });
+    this.i = this.moves.length;
+    this.guessedMove = uci.slice(0, 4);
+    this.usedAlternativeCheckmate = true;
+    return true;
+  }
+
+  tryGuess = (
+    sourceSquare: string,
+    targetSquare: string,
+    piece: string,
+  ): { accepted: boolean; finished: boolean } => {
+    const candidates = this.buildCandidateUcis(
+      sourceSquare,
+      targetSquare,
+      piece,
+    );
+
+    for (const uci of candidates) {
+      if (this.moves[this.i] === uci) {
+        this.isCorrect = true;
+        this.guessedMove = uci.slice(0, 4);
+        return {
+          accepted: true,
+          finished: this.isCompletedByCorrectGuess(),
+        };
+      }
+    }
+
+    for (const uci of candidates) {
+      if (this.isCheckmatingMove(uci) && this.applyCheckmateGuess(uci)) {
+        this.isCorrect = true;
+        return { accepted: true, finished: true };
+      }
+    }
+
+    this.isCorrect = false;
+    this.guessedMove = `${sourceSquare}${targetSquare}`;
+    this.moveHistory.push({
+      ply: this.moveHistory.length,
+      uci: candidates[candidates.length - 1] ?? this.guessedMove,
+      actor: 'attempt',
+      isCorrect: false,
+    });
+
+    return { accepted: false, finished: false };
   };
+
+  judgeGuess = (sourceSquare: string, targetSquare: string, piece: string) =>
+    this.tryGuess(sourceSquare, targetSquare, piece).accepted;
 
   resetInteractions(): void {
     this.guessedMove = '';
     this.isHintWanted = false;
   }
 
-  private judgeMove(move: string): boolean {
-    this.guessedMove = move;
-    return this.moves[this.i] === move;
+  /** True when the last correct guess applied an alternative checkmate. */
+  isAlternativeCheckmate(): boolean {
+    return this.usedAlternativeCheckmate;
   }
 
   wantsHint(wants: boolean): void {

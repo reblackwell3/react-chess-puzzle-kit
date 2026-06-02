@@ -24,28 +24,38 @@ export const PuzzleBoard = ({
       return false;
     }
 
-    const isCorrect = position.judgeGuess(sourceSquare, targetSquare, piece);
+    const guess = position.tryGuess(sourceSquare, targetSquare, piece);
+    if (!guess.accepted) {
+      return false;
+    }
+
     onFeedback({
       index: position.getIndex(),
       guess: { sourceSquare, targetSquare, piece },
-      isCorrect: isCorrect,
-      isFinished: isCorrect && position.isCompletedByCorrectGuess(),
+      isCorrect: true,
+      isFinished: guess.finished,
     });
     incInteractionNum();
     setTimeout(() => {
       position.resetInteractions();
       incInteractionNum();
     }, 500);
-    // placeholder for apiProxy.onDropFeedback() call
-    if (isCorrect) {
-      position.next();
+
+    if (position.isAlternativeCheckmate()) {
       incInteractionNum();
-      setTimeout(() => {
-        position.next();
-        incInteractionNum();
-      }, 500);
+      return true;
     }
-    return isCorrect;
+
+    position.next();
+    incInteractionNum();
+    setTimeout(() => {
+      if (!position.isFinished()) {
+        position.next();
+      }
+      incInteractionNum();
+    }, 500);
+
+    return true;
   };
 
   return (
