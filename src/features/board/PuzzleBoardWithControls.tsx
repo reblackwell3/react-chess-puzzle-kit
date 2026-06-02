@@ -38,6 +38,9 @@ export {
 } from './defaults/DefaultPuzzleControls';
 export type { PuzzleControlsRenderProps } from './defaults/DefaultPuzzleControls';
 
+/** Delay before auto-playing the opponent's opening move (ms). */
+const OPPONENT_OPENING_MOVE_DELAY_MS = 500;
+
 export interface PuzzleBoardWithControlsProps {
   theme: 'light' | 'dark';
   apiProxy: {
@@ -89,9 +92,7 @@ export const PuzzleBoardWithControls = ({
 }: PuzzleBoardWithControlsProps) => {
   const { onFetch, onFeedback } = apiProxy;
 
-  const [position, setPosition] = useState(
-    () => new PuzzlePosition('8/8/8/7K/k7/8/8/8 w - - 0 1', []),
-  );
+  const [position, setPosition] = useState<PuzzlePosition | null>(null);
   const [puzzleNum, setPuzzleNum] = useState(0);
   const [hasIncorrectAttempt, setHasIncorrectAttempt] = useState(false);
   const [puzzleComplete, setPuzzleComplete] = useState(false);
@@ -102,22 +103,38 @@ export const PuzzleBoardWithControls = ({
   };
 
   useEffect(() => {
+    let cancelled = false;
+    let openingMoveTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
     setHasIncorrectAttempt(false);
     setPuzzleComplete(false);
+    setPosition(null);
     onFetch().then((data) => {
+      if (cancelled) {
+        return;
+      }
       if (!data || !data.fen || !data.moves) {
         console.error('Invalid data fetched:', data);
         return;
       }
-      setPosition(() => {
-        const newPosition = new PuzzlePosition(data.fen, data.moves);
-        setTimeout(() => {
-          newPosition.next();
+      const newPosition = new PuzzlePosition(data.fen, data.moves);
+      setPosition(newPosition);
+      openingMoveTimeoutId = setTimeout(() => {
+        if (cancelled) {
+          return;
+        }
+        if (newPosition.next()) {
           incInteractionNum();
-        }, 500);
-        return newPosition;
-      });
+        }
+      }, OPPONENT_OPENING_MOVE_DELAY_MS);
     });
+
+    return () => {
+      cancelled = true;
+      if (openingMoveTimeoutId !== undefined) {
+        clearTimeout(openingMoveTimeoutId);
+      }
+    };
   }, [puzzleNum]);
 
   const handleFeedback = (feedbackData: {
@@ -137,6 +154,9 @@ export const PuzzleBoardWithControls = ({
   };
 
   const getResultStatus = (): PuzzleResultStatus => {
+    if (!position) {
+      return 'none';
+    }
     if (hasIncorrectAttempt) {
       return 'incorrect';
     }
@@ -147,6 +167,9 @@ export const PuzzleBoardWithControls = ({
   };
 
   const handleHintRequest = () => {
+    if (!position) {
+      return;
+    }
     position.recordHint();
     handleFeedback({ index: position.getIndex(), hintRequested: true });
     position.wantsHint(true);
@@ -212,16 +235,24 @@ export const PuzzleBoardWithControls = ({
             renderEngineEvaluation={renderEngineEvaluation}
           />
         )
-      ) : (
-        position && (
+      ) : position ? (
           <PuzzleBoard
+            key={puzzleNum}
             position={position}
             boardWidth={puzzleBoardWidth}
             onFeedback={handleFeedback}
             incInteractionNum={incInteractionNum}
           />
-        )
-      )}
+        ) : (
+          <div
+            style={{
+              width: puzzleBoardWidth,
+              maxWidth: '100%',
+              aspectRatio: '1 / 1',
+            }}
+            aria-hidden
+          />
+        )}
       {renderControls(handleHintRequest, handleNextPuzzle, resultStatus, {
         visible: analysis.canOpen,
         openAnalysis: analysis.openAnalysis,

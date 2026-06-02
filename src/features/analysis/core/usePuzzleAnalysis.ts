@@ -8,7 +8,7 @@ import {
 } from './analysisContext';
 
 export const usePuzzleAnalysis = (
-  position: PuzzlePosition,
+  position: PuzzlePosition | null,
   resultStatus: PuzzleResultStatus,
   puzzleNum: number,
 ) => {
@@ -18,6 +18,10 @@ export const usePuzzleAnalysis = (
   const canOpen = isAnalysisAvailable(position, resultStatus);
 
   useEffect(() => {
+    if (!position) {
+      return;
+    }
+
     const context = buildAnalysisContext(position);
     console.log('[puzzle-analysis]', {
       puzzleNum,
@@ -36,7 +40,7 @@ export const usePuzzleAnalysis = (
   const openAnalysis = () => {
     console.log('[puzzle-analysis] openAnalysis clicked', { canOpen, resultStatus });
 
-    if (!canOpen) {
+    if (!canOpen || !position) {
       console.log('[puzzle-analysis] openAnalysis blocked — canOpen is false');
       return;
     }

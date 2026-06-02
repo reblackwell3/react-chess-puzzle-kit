@@ -36,9 +36,13 @@ export const buildAnalysisContext = (
 };
 
 export const isAnalysisAvailable = (
-  position: PuzzlePosition,
+  position: PuzzlePosition | null,
   resultStatus: PuzzleResultStatus,
 ): boolean => {
+  if (!position) {
+    return false;
+  }
+
   return (
     buildAnalysisContext(position).solutionMoves.length > 0 &&
     resultStatus !== 'none'
