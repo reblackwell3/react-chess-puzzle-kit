@@ -32,6 +32,10 @@ export const PuzzleBoard = ({
         isCorrect: false,
       });
       incInteractionNum();
+      setTimeout(() => {
+        position.resetInteractions();
+        incInteractionNum();
+      }, 500);
       return false;
     }
 
