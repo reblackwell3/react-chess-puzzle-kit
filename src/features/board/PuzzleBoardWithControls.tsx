@@ -25,7 +25,7 @@ import {
   puzzlePlayColumnStyle,
 } from './puzzleBoardLayout';
 import { PuzzlePosition } from '../position/Position';
-import { ThemeProvider } from '../theme/ThemeProvider';
+import { ThemeProvider } from './chessboardTheme';
 export type { PuzzleMoveRecord } from '../position/moveHistory';
 export type {
   AnalysisContainerRenderProps,

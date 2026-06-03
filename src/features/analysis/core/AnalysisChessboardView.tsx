@@ -1,6 +1,6 @@
 import { ChessboardDnDProvider } from 'react-chessboard';
 import { HighlightChessboard } from '../../board/HighlightChessboard';
-import { getLastMoveSquareStyles } from '../../theme/squareHighlightColors';
+import { getLastMoveSquareStyles } from '../analysisBoardHighlightColors';
 import { AnalysisBoardModel } from './useAnalysisBoardModel';
 
 /** Draggable analysis board (no surrounding layout chrome). */

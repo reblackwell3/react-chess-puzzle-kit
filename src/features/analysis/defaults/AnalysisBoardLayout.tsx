@@ -1,6 +1,6 @@
 import React from 'react';
 import { AnalysisLayoutConfig } from '../core/analysisLayoutConfig';
-import { ThemeProvider } from '../../theme/ThemeProvider';
+import { ThemeProvider } from '../../board/chessboardTheme';
 import { AnalysisBoardModel } from '../core/useAnalysisBoardModel';
 
 export type AnalysisBoardLayoutProps = {

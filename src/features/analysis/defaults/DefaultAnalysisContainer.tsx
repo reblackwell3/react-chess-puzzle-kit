@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { getAnalysisModalStyles } from '../../theme/ThemeContext';
+import { getAnalysisModalStyles } from './analysisModalStyles';
 import { AnalysisContainerRenderProps } from '../core/renderProps';
 
 /** Default full-screen modal shell for analysis (library preset UI). */

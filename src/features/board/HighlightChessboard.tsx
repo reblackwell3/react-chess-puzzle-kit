@@ -1,10 +1,10 @@
-import { useTheme } from '../theme/ThemeContext';
-import { squareHighlightColors } from '../theme/squareHighlightColors';
+import { boardSquareHighlightColors } from './boardSquareHighlightColors';
+import { useChessboardTheme } from './chessboardTheme';
 import { Chessboard } from 'react-chessboard';
 
 const getCheckHighlighting = (checkSquare: string) => {
   const styles: Record<string, { backgroundColor: string }> = {};
-  styles[checkSquare] = { backgroundColor: squareHighlightColors.check };
+  styles[checkSquare] = { backgroundColor: boardSquareHighlightColors.check };
   return styles;
 };
 
@@ -14,11 +14,11 @@ const getFeedbackHighlighting = (
 ) => {
   const styles: Record<string, { backgroundColor: string }> = {};
   if (hintSquare) {
-    styles[hintSquare] = { backgroundColor: squareHighlightColors.hint };
+    styles[hintSquare] = { backgroundColor: boardSquareHighlightColors.hint };
   }
   if (incorrectMoveSquare) {
     styles[incorrectMoveSquare] = {
-      backgroundColor: squareHighlightColors.incorrect,
+      backgroundColor: boardSquareHighlightColors.incorrect,
     };
   }
   return styles;
@@ -38,7 +38,7 @@ export const HighlightChessboard = ({
   customSquareStyles: extraSquareStyles,
   ...props
 }: HighlightChessboardProps) => {
-  const { customDarkSquareStyle, customLightSquareStyle } = useTheme();
+  const { customDarkSquareStyle, customLightSquareStyle } = useChessboardTheme();
   const checkStyles = getCheckHighlighting(checkSquare);
   const feedbackStyles = getFeedbackHighlighting(
     hintSquare,

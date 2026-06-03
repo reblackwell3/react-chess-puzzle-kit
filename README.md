@@ -151,8 +151,10 @@ export function PuzzlePage() {
 | **`defaultRenderControls`** | Render-prop function wired to `DefaultPuzzleControls` |
 | **`PuzzleBoard`** | Draggable puzzle board with correct/incorrect/hint feedback |
 | **`PuzzlePosition`** | FEN + solution line, move index, guess judging |
-| **`HighlightChessboard`** | `react-chessboard` + theme square highlights |
-| **`ThemeProvider`** | Light/dark board colors |
+| **`HighlightChessboard`** | `react-chessboard` + puzzle square highlights |
+| **`ThemeProvider`** | Light/dark chessboard square colors (`board/chessboardTheme`) |
+| **`boardSquareHighlightColors`** | Check / hint / incorrect overlays |
+| **`analysisSidebarColors`** | Analysis move-list striping |
 
 ### Analysis
 
