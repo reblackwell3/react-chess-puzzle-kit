@@ -154,15 +154,13 @@ export class PuzzlePosition extends Position {
   private buildCandidateUcis(
     sourceSquare: string,
     targetSquare: string,
-    piece: string,
   ): string[] {
-    const move = `${sourceSquare}${targetSquare}`;
-    const promotionPiece = piece[1].toLowerCase();
-    const moveWithPromotion = `${move}${promotionPiece}`;
+    const lanMoves = this.chess
+      .moves({ square: sourceSquare as Square, verbose: true })
+      .filter((move) => move.to === targetSquare)
+      .map((move) => move.lan);
 
-    return move === moveWithPromotion
-      ? [move]
-      : [move, moveWithPromotion];
+    return [...new Set(lanMoves)];
   }
 
   private tryMakeUciMove(chess: Chess, uci: string) {
@@ -212,8 +210,13 @@ export class PuzzlePosition extends Position {
     const candidates = this.buildCandidateUcis(
       sourceSquare,
       targetSquare,
-      piece,
     );
+
+    if (candidates.length === 0) {
+      this.isCorrect = false;
+      this.guessedMove = `${sourceSquare}${targetSquare}`;
+      return { accepted: false, finished: false };
+    }
 
     for (const uci of candidates) {
       if (this.moves[this.i] === uci) {
