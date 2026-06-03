@@ -1,6 +1,10 @@
 import React from 'react';
-import { squareHighlightColors } from '../../theme/squareHighlightColors';
 import { AnalysisSidebarRenderProps } from '../core/renderProps';
+import { analysisSidebarColors } from './analysisSidebarColors';
+import {
+  createSidebarRowBandCounters,
+  getSidebarRowBackground,
+} from './analysisSidebarRowStyle';
 
 export const DefaultAnalysisSidebar = ({
   historyRows,
@@ -12,24 +16,12 @@ export const DefaultAnalysisSidebar = ({
   theme,
   engineEvaluationPanel,
 }: AnalysisSidebarRenderProps) => {
-  const moveChipStyle: React.CSSProperties = {
+  const rowBands = createSidebarRowBandCounters();
+
+  const baseChipStyle: React.CSSProperties = {
     cursor: 'pointer',
     padding: '4px 8px',
     borderRadius: 4,
-    backgroundColor: squareHighlightColors.sidebarMove[theme],
-  };
-  const activeMoveChipStyle: React.CSSProperties = {
-    ...moveChipStyle,
-    backgroundColor: squareHighlightColors.sidebarActiveMove[theme],
-    fontWeight: 600,
-  };
-  const variationChipStyle: React.CSSProperties = {
-    ...moveChipStyle,
-    fontStyle: 'italic',
-  };
-  const activeVariationChipStyle: React.CSSProperties = {
-    ...activeMoveChipStyle,
-    fontStyle: 'italic',
   };
 
   return (
@@ -69,19 +61,18 @@ export const DefaultAnalysisSidebar = ({
           {historyRows.map((row) => {
             const isSelected = isHistoryRowSelected(row);
             const isVariation = row.kind === 'variation';
-            const style = isSelected
-              ? isVariation
-                ? activeVariationChipStyle
-                : activeMoveChipStyle
-              : isVariation
-                ? variationChipStyle
-                : moveChipStyle;
+            const backgroundColor = isSelected
+              ? analysisSidebarColors.activeMove[theme]
+              : getSidebarRowBackground(theme, row, rowBands);
 
             return (
               <li
                 key={row.key}
                 style={{
-                  ...style,
+                  ...baseChipStyle,
+                  backgroundColor,
+                  fontWeight: isSelected ? 600 : undefined,
+                  fontStyle: isVariation ? 'italic' : undefined,
                   marginLeft: row.indent * 16,
                 }}
                 onClick={() => onSelectHistoryRow(row)}
