@@ -5,6 +5,7 @@ import {
   AnalysisBoardLayout,
   AnalysisContainerRenderProps,
   AnalysisControls,
+  AnalysisErrorBoundary,
   AnalysisLayoutConfig,
   AnalysisMainRenderProps,
   AnalysisSidebarRenderProps,
@@ -51,6 +52,8 @@ export interface PuzzleBoardWithControlsProps {
   theme: 'light' | 'dark';
   apiProxy: {
     onFetch: () => Promise<{ fen: string; moves: string[] }>;
+    /** Called when {@link onFetch} rejects (e.g. network / server down). */
+    onFetchError?: (error: unknown) => void;
     onFeedback: (feedbackData: {
       index: number;
       guess?: { sourceSquare: string; targetSquare: string; piece: string };
@@ -96,7 +99,7 @@ export const PuzzleBoardWithControls = ({
   renderAnalysisMain,
   engine,
 }: PuzzleBoardWithControlsProps) => {
-  const { onFetch, onFeedback } = apiProxy;
+  const { onFetch, onFetchError, onFeedback } = apiProxy;
 
   const [position, setPosition] = useState<PuzzlePosition | null>(null);
   const [puzzleNum, setPuzzleNum] = useState(0);
@@ -113,27 +116,33 @@ export const PuzzleBoardWithControls = ({
     let openingMoveTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
     setPosition(null);
-    onFetch().then((data) => {
-      if (cancelled) {
-        return;
-      }
-      if (!data || !data.fen || !data.moves) {
-        console.error('Invalid data fetched:', data);
-        return;
-      }
-      setHasIncorrectAttempt(false);
-      setPuzzleComplete(false);
-      const newPosition = new PuzzlePosition(data.fen, data.moves);
-      setPosition(newPosition);
-      openingMoveTimeoutId = setTimeout(() => {
+    onFetch()
+      .then((data) => {
         if (cancelled) {
           return;
         }
-        if (newPosition.next()) {
-          incInteractionNum();
+        if (!data || !data.fen || !data.moves) {
+          console.error('Invalid data fetched:', data);
+          return;
         }
-      }, OPPONENT_OPENING_MOVE_DELAY_MS);
-    });
+        setHasIncorrectAttempt(false);
+        setPuzzleComplete(false);
+        const newPosition = new PuzzlePosition(data.fen, data.moves);
+        setPosition(newPosition);
+        openingMoveTimeoutId = setTimeout(() => {
+          if (cancelled) {
+            return;
+          }
+          if (newPosition.next()) {
+            incInteractionNum();
+          }
+        }, OPPONENT_OPENING_MOVE_DELAY_MS);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          onFetchError?.(error);
+        }
+      });
 
     return () => {
       cancelled = true;
@@ -210,7 +219,8 @@ export const PuzzleBoardWithControls = ({
   return (
     <ThemeProvider theme={theme}>
       {analysisSnapshot ? (
-        useHostAnalysisUi ? (
+        <AnalysisErrorBoundary onClose={analysis.closeAnalysis}>
+          {useHostAnalysisUi ? (
           <AnalysisBoardCore
             analysisContext={analysisSnapshot}
             onClose={analysis.closeAnalysis}
@@ -246,7 +256,8 @@ export const PuzzleBoardWithControls = ({
             renderContainer={renderAnalysisContainer}
             renderEngineEvaluation={renderEngineEvaluation}
           />
-        )
+        )}
+        </AnalysisErrorBoundary>
       ) : (
         <div style={puzzlePlayColumnStyle(puzzleBoardWidth)}>
           <div style={puzzleBoardSlotStyle()}>

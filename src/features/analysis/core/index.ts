@@ -1,3 +1,4 @@
+export * from './AnalysisErrorBoundary';
 export * from './analysisContext';
 export * from './analysisLayoutConfig';
 export * from './AnalysisBoardCore';
