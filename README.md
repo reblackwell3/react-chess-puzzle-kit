@@ -1,5 +1,12 @@
 # react-chess-puzzle-kit
 
+```bash
+npm install
+npm run build
+```
+
+Build output: `dist/` (`index.js`, `index.esm.js`, `index.d.ts`). Re-run after source changes when consuming this package via `file:../react-chess-puzzle-kit`.
+
 React components for **interactive chess puzzles** and **post-puzzle analysis**, built on [react-chessboard](https://github.com/Clariity/react-chessboard) and [chess.js](https://github.com/jhlywa/chess.js). Used in production at [endchess.training](https://endchess.training).
 
 The library owns puzzle logic, move history, themes, and optional Stockfish analysis. **Defaults are included** for a full demo (controls + analysis UI); production apps usually replace those with custom render props.
