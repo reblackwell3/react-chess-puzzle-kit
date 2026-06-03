@@ -51,19 +51,37 @@ export class AnalysisPosition {
   ): SolutionMoveDisplay[] {
     const chess = new Chess(initialFen);
     return solutionMoves.map((uci, index) => {
-      const move = chess.move(uci);
+      let san = uci;
+      try {
+        const move = chess.move(uci);
+        if (move?.san) {
+          san = move.san;
+        }
+      } catch {
+        // Keep UCI label if the solution line cannot be replayed from the start FEN.
+      }
       return {
         ply: index + 1,
         uci,
-        san: move?.san ?? uci,
+        san,
       };
     });
+  }
+
+  private static applySolutionMove(chess: Chess, uci: string): boolean {
+    try {
+      return chess.move(uci) !== null;
+    } catch {
+      return false;
+    }
   }
 
   private fenAtMainPly(ply: number): string {
     const chess = new Chess(this.initialFen);
     for (let i = 0; i < ply; i++) {
-      chess.move(this.solutionMoves[i]);
+      if (!AnalysisPosition.applySolutionMove(chess, this.solutionMoves[i])) {
+        break;
+      }
     }
     return chess.fen();
   }
@@ -71,7 +89,9 @@ export class AnalysisPosition {
   private rebuildChess(): void {
     this.chess.load(this.initialFen);
     for (let i = 0; i < this.mainPly; i++) {
-      this.chess.move(this.solutionMoves[i]);
+      if (!AnalysisPosition.applySolutionMove(this.chess, this.solutionMoves[i])) {
+        break;
+      }
     }
     if (this.variation && this.variationCursor > 0) {
       for (let i = 0; i < this.variationCursor; i++) {
@@ -154,6 +174,20 @@ export class AnalysisPosition {
       },
     ];
 
+    if (this.variation?.branchPly === 0) {
+      this.variation.sans.forEach((san, index) => {
+        const variationIndex = index + 1;
+        rows.push({
+          key: `var-0-${variationIndex}`,
+          label: `${variationIndex}. ${san}`,
+          indent: 1,
+          kind: 'variation',
+          mainPly: 0,
+          variationIndex,
+        });
+      });
+    }
+
     for (const move of this.solutionSans) {
       rows.push({
         key: `main-${move.ply}`,
@@ -166,13 +200,14 @@ export class AnalysisPosition {
 
       if (this.variation?.branchPly === move.ply) {
         this.variation.sans.forEach((san, index) => {
+          const variationIndex = index + 1;
           rows.push({
-            key: `var-${move.ply}-${index + 1}`,
-            label: san,
+            key: `var-${move.ply}-${variationIndex}`,
+            label: `${move.ply + variationIndex}. ${san}`,
             indent: 1,
             kind: 'variation',
             mainPly: move.ply,
-            variationIndex: index + 1,
+            variationIndex,
           });
         });
       }
