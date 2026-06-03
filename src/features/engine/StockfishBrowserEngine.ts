@@ -1,4 +1,5 @@
 import { parseUciInfoLine } from './parseUciInfo';
+import { isAnalyzableFen } from './isAnalyzableFen';
 import {
   resolveStockfishWasmUrl,
   resolveStockfishWorkerUrl,
@@ -20,6 +21,8 @@ const firstToken = (line: string) => line.split(/\s+/)[0] ?? '';
 export class StockfishBrowserEngine {
   private worker: Worker | null = null;
   private ready = false;
+  private disposed = false;
+  private lifecycleGeneration = 0;
   private evaluation: EngineEvaluation = emptyEngineEvaluation();
   private lineMap = new Map<number, EngineLine>();
   private listeners = new Set<(evaluation: EngineEvaluation) => void>();
@@ -69,36 +72,78 @@ export class StockfishBrowserEngine {
       throw new Error('Web Workers are not available in this environment');
     }
 
+    const generation = ++this.lifecycleGeneration;
+    this.disposed = false;
     this.setEvaluation({ ...emptyEngineEvaluation(), status: 'loading' });
     await this.assertWasmReachable();
 
+    if (this.disposed || generation !== this.lifecycleGeneration) {
+      return;
+    }
+
     const workerUrl = resolveStockfishWorkerUrl(this.scriptUrl);
-    this.worker = new Worker(workerUrl, { type: 'classic' });
+    let worker: Worker;
+    try {
+      worker = new Worker(workerUrl, { type: 'classic' });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to create Stockfish worker';
+      throw new Error(
+        `${message}. Browser extensions (e.g. MetaMask) can block Web Workers on some pages.`,
+      );
+    }
+
+    this.worker = worker;
+    this.worker.onerror = () => {
+      this.handleWorkerFailure(
+        `Stockfish worker failed (${this.scriptUrl}). Ensure public/stockfish/*.wasm is served.`,
+      );
+    };
+    this.worker.onmessageerror = () => {
+      this.handleWorkerFailure(
+        `Stockfish worker message error (${this.scriptUrl}).`,
+      );
+    };
 
     try {
-      await this.handshake(workerUrl);
+      await this.handshake(workerUrl, generation);
+      if (this.disposed || generation !== this.lifecycleGeneration || !this.worker) {
+        return;
+      }
       this.worker.onmessage = (event) => {
         for (const line of splitWorkerLines(event.data)) {
           this.handleLine(line);
         }
       };
-      this.worker.onerror = () => {
-        this.setEvaluation({
-          ...emptyEngineEvaluation(),
-          status: 'error',
-          error: `Stockfish worker failed (${this.scriptUrl}). Ensure public/stockfish/*.wasm is served.`,
-        });
-      };
       this.ready = true;
       this.setEvaluation({ ...emptyEngineEvaluation(), status: 'idle' });
     } catch (error) {
-      this.worker.terminate();
+      this.worker?.terminate();
       this.worker = null;
-      throw error;
+      if (!this.disposed && generation === this.lifecycleGeneration) {
+        throw error;
+      }
     }
   }
 
-  private async handshake(workerUrl: string): Promise<void> {
+  private handleWorkerFailure(message: string): void {
+    if (this.disposed) {
+      return;
+    }
+    this.ready = false;
+    this.setEvaluation({
+      ...emptyEngineEvaluation(),
+      status: 'error',
+      error: message,
+    });
+    this.worker?.terminate();
+    this.worker = null;
+  }
+
+  private async handshake(
+    workerUrl: string,
+    generation: number,
+  ): Promise<void> {
     if (!this.worker) {
       throw new Error('Stockfish worker was not created');
     }
@@ -106,16 +151,22 @@ export class StockfishBrowserEngine {
     await this.waitForLine(
       this.worker,
       workerUrl,
+      generation,
       (line) => firstToken(line) === 'uciok',
       () => {
         this.worker?.postMessage('uci');
       },
     );
 
+    if (this.disposed || generation !== this.lifecycleGeneration || !this.worker) {
+      return;
+    }
+
     this.worker.postMessage('setoption name UCI_AnalyseMode value true');
     await this.waitForLine(
       this.worker,
       workerUrl,
+      generation,
       (line) => firstToken(line) === 'readyok',
       () => {
         this.worker?.postMessage('isready');
@@ -126,14 +177,21 @@ export class StockfishBrowserEngine {
   private waitForLine(
     worker: Worker,
     workerUrl: string,
+    generation: number,
     match: (line: string) => boolean,
     sendCommand: () => void,
     timeoutMs = INIT_TIMEOUT_MS,
   ): Promise<void> {
     return new Promise((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
+      const cleanup = () => {
+        clearTimeout(timeoutId);
         worker.removeEventListener('message', onMessage);
         worker.removeEventListener('error', onError);
+        worker.removeEventListener('messageerror', onMessageError);
+      };
+
+      const timeoutId = setTimeout(() => {
+        cleanup();
         reject(
           new Error(
             `Stockfish engine timed out (${workerUrl}). Run copy:stockfish, confirm public/stockfish/*.wasm is served, and check the browser console.`,
@@ -142,9 +200,7 @@ export class StockfishBrowserEngine {
       }, timeoutMs);
 
       const onError = () => {
-        clearTimeout(timeoutId);
-        worker.removeEventListener('message', onMessage);
-        worker.removeEventListener('error', onError);
+        cleanup();
         reject(
           new Error(
             `Stockfish worker failed while loading ${this.scriptUrl}. Check the browser console and WASM MIME type.`,
@@ -152,12 +208,25 @@ export class StockfishBrowserEngine {
         );
       };
 
+      const onMessageError = () => {
+        cleanup();
+        reject(
+          new Error(
+            `Stockfish worker message error while loading ${this.scriptUrl}.`,
+          ),
+        );
+      };
+
       const onMessage = (event: MessageEvent) => {
+        if (this.disposed || generation !== this.lifecycleGeneration) {
+          cleanup();
+          resolve();
+          return;
+        }
+
         for (const line of splitWorkerLines(event.data)) {
           if (match(line)) {
-            clearTimeout(timeoutId);
-            worker.removeEventListener('message', onMessage);
-            worker.removeEventListener('error', onError);
+            cleanup();
             resolve();
             return;
           }
@@ -166,12 +235,26 @@ export class StockfishBrowserEngine {
 
       worker.addEventListener('message', onMessage);
       worker.addEventListener('error', onError);
+      worker.addEventListener('messageerror', onMessageError);
       sendCommand();
     });
   }
 
   analyze(fen: string, depth: number, multiPv: number): void {
-    if (!this.worker || !this.ready) {
+    if (!this.worker || !this.ready || this.disposed) {
+      return;
+    }
+
+    if (!isAnalyzableFen(fen)) {
+      this.analysisFen = fen;
+      this.lineMap.clear();
+      this.setEvaluation({
+        status: 'idle',
+        depth: 0,
+        lines: [],
+        fen,
+      });
+      this.worker.postMessage('stop');
       return;
     }
 
@@ -205,10 +288,17 @@ export class StockfishBrowserEngine {
   }
 
   dispose(): void {
-    this.stop();
-    this.worker?.terminate();
-    this.worker = null;
+    this.disposed = true;
+    this.lifecycleGeneration += 1;
     this.ready = false;
+    this.stop();
+    if (this.worker) {
+      this.worker.onmessage = null;
+      this.worker.onerror = null;
+      this.worker.onmessageerror = null;
+      this.worker.terminate();
+      this.worker = null;
+    }
     this.listeners.clear();
   }
 

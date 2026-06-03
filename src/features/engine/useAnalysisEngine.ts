@@ -23,6 +23,7 @@ export const useAnalysisEngine = (
   );
   const [engineReady, setEngineReady] = useState(false);
   const engineRef = useRef<StockfishBrowserEngine | null>(null);
+  const mountGenerationRef = useRef(0);
 
   useEffect(() => {
     if (!enabled || typeof Worker === 'undefined') {
@@ -31,26 +32,29 @@ export const useAnalysisEngine = (
       return;
     }
 
+    const mountGeneration = ++mountGenerationRef.current;
     const engine = new StockfishBrowserEngine(scriptUrl);
     engineRef.current = engine;
     let cancelled = false;
 
     const unsubscribe = engine.subscribe((next) => {
-      if (!cancelled) {
+      if (!cancelled && mountGeneration === mountGenerationRef.current) {
         setEvaluation(next);
       }
     });
 
-    const initPromise = engine.init();
-
-    initPromise
+    engine
+      .init()
       .then(() => {
-        if (!cancelled) {
+        if (
+          !cancelled &&
+          mountGeneration === mountGenerationRef.current
+        ) {
           setEngineReady(true);
         }
       })
       .catch((error: unknown) => {
-        if (cancelled) {
+        if (cancelled || mountGeneration !== mountGenerationRef.current) {
           return;
         }
         const message =
