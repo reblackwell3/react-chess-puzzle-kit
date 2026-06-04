@@ -3,8 +3,8 @@ import {
   formatEvaluation,
   formatPvPreview,
   normalizeEvalForWhite,
-} from './formatEvaluation';
-import { EngineEvaluation } from './types';
+  type EngineEvaluation,
+} from 'react-chess-core';
 
 export interface EngineEvaluationPanelProps {
   fen: string;

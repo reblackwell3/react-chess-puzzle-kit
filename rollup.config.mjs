@@ -31,6 +31,7 @@ export default [
       'react',
       'react-dom',
       'react-chessboard',
+      'react-chess-core',
       'chess.js',
     ],
   },

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { EngineEvaluation } from '../../engine/types';
+import { EngineEvaluation } from 'react-chess-core';
 import {
   AnalysisHistoryRow,
   SolutionMoveDisplay,

@@ -1,5 +1,5 @@
 import { ChessboardDnDProvider } from 'react-chessboard';
-import { HighlightChessboard } from './HighlightChessboard';
+import { HighlightChessboard } from 'react-chess-core';
 import { PuzzlePosition } from '../position/Position';
 
 export interface PuzzleBoardProps {

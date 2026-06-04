@@ -14,7 +14,7 @@ import {
   PuzzleResultStatus,
   usePuzzleAnalysis,
 } from '../analysis';
-import { AnalysisEngineOptions } from '../engine/types';
+import { AnalysisEngineOptions, ThemeProvider } from 'react-chess-core';
 import { defaultRenderControls } from './defaults/DefaultPuzzleControls';
 import { BlankPuzzleBoard } from './BlankPuzzleBoard';
 import { PuzzleBoard } from './PuzzleBoard';
@@ -25,7 +25,6 @@ import {
   puzzlePlayColumnStyle,
 } from './puzzleBoardLayout';
 import { PuzzlePosition } from '../position/Position';
-import { ThemeProvider } from './chessboardTheme';
 export type { PuzzleMoveRecord } from '../position/moveHistory';
 export type {
   AnalysisContainerRenderProps,

@@ -1,5 +1,5 @@
 import { ChessboardDnDProvider } from 'react-chessboard';
-import { HighlightChessboard } from './HighlightChessboard';
+import { HighlightChessboard } from 'react-chess-core';
 
 const EMPTY_BOARD_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
 

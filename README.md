@@ -19,7 +19,9 @@ The library owns puzzle logic, move history, themes, and optional Stockfish anal
 npm install react-chess-puzzle-kit
 ```
 
-**Peer dependencies:** `react`, `react-chessboard`, `chess.js` (see `package.json` for versions).
+**Peer dependencies:** `react`, `react-chessboard`, `chess.js`, `react-chess-core` (see `package.json` for versions).
+
+Local development links core via `file:../react-chess-core` — build core first (`npm run build` in that repo), then install puzzle-kit (`npm install --legacy-peer-deps` if npm reports peer conflicts).
 
 For engine analysis in the browser, also install Stockfish and copy WASM into your app’s static folder (see [Stockfish](#stockfish-browser-engine) below).
 

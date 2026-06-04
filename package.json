@@ -42,6 +42,7 @@
   },
   "dependencies": {
     "chess.js": "^1.0.0-beta.8",
+    "react-chess-core": "file:../react-chess-core",
     "rollup": "^4.22.2",
     "rollup-plugin-peer-deps-external": "^2.2.4",
     "rollup-plugin-typescript2": "^0.36.0",
@@ -50,6 +51,7 @@
   "peerDependencies": {
     "chess.js": "^1.0.0-beta.8",
     "react": "^18.3.1",
+    "react-chess-core": "^0.1.0",
     "react-chessboard": "^4.7.1"
   },
   "devDependencies": {
@@ -66,7 +68,8 @@
     "@storybook/react": "^8.2.9",
     "@storybook/react-vite": "^8.2.9",
     "@storybook/test": "^8.2.9",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "@types/typescript": "^2.0.0",
     "@vitejs/plugin-react": "^4.3.1",
     "chess.js": "^1.0.0-beta.8",

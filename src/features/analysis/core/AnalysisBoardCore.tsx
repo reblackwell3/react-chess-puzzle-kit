@@ -6,7 +6,7 @@ import {
   AnalysisSidebarRenderProps,
   EngineEvaluationRenderProps,
 } from './renderProps';
-import { AnalysisEngineOptions } from '../../engine/types';
+import { AnalysisEngineOptions } from 'react-chess-core';
 import {
   AnalysisBoardModel,
   useAnalysisBoardModel,

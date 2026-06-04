@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from '@storybook/react';
-import { HighlightChessboard } from '../features/board/HighlightChessboard';
+import { HighlightChessboard } from 'react-chess-core';
 import { STORYBOOK_BOARD_WIDTH } from './storybookLayout';
 import withChessboardDnD from './withChessboardDnD';
 import withThemeProvider from './withThemeProvider';

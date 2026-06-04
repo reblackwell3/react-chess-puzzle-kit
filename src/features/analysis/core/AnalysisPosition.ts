@@ -1,5 +1,5 @@
 import { Chess, Square } from 'chess.js';
-import { uciPvToSan } from '../../engine/formatEvaluation';
+import { uciPvToSan } from 'react-chess-core';
 import { getCheckSquareFromChess } from '../../position/Position';
 import { PuzzleAnalysisContext } from './analysisContext';
 
