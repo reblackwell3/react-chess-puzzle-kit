@@ -10,7 +10,7 @@ import {
   DEFAULT_STOCKFISH_SCRIPT_URL,
   EngineEvaluation,
   useAnalysisEngine,
-} from '../../engine';
+} from 'react-chess-core';
 
 export type UseAnalysisBoardModelArgs = {
   analysisContext: PuzzleAnalysisContext;

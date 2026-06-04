@@ -19,9 +19,17 @@ The library owns puzzle logic, move history, themes, and optional Stockfish anal
 npm install react-chess-puzzle-kit
 ```
 
-**Peer dependencies:** `react`, `react-chessboard`, `chess.js`, `react-chess-core` (see `package.json` for versions).
+**Peer dependencies:** `react`, `react-chessboard`, `chess.js`, **`react-chess-core`** (required — see `package.json`).
 
-Local development links core via `file:../react-chess-core` — build core first (`npm run build` in that repo), then install puzzle-kit (`npm install --legacy-peer-deps` if npm reports peer conflicts).
+Install both packages in your app:
+
+```bash
+npm install react-chess-puzzle-kit react-chess-core
+```
+
+Local development: `file:../react-chess-core` and `file:../react-chess-puzzle-kit` — build core first (`npm run build` in that repo), then puzzle-kit, then `npm install` in the app.
+
+**Board theme, `HighlightChessboard`, Stockfish hooks, and eval formatters** are exported from **`react-chess-core`**, not re-exported from puzzle-kit. Puzzle-kit covers puzzle play, analysis orchestration, and optional default analysis UI.
 
 For engine analysis in the browser, also install Stockfish and copy WASM into your app’s static folder (see [Stockfish](#stockfish-browser-engine) below).
 
@@ -153,10 +161,9 @@ export function PuzzlePage() {
 | **`defaultRenderControls`** | Render-prop function wired to `DefaultPuzzleControls` |
 | **`PuzzleBoard`** | Draggable puzzle board with correct/incorrect/hint feedback |
 | **`PuzzlePosition`** | FEN + solution line, move index, guess judging |
-| **`HighlightChessboard`** | `react-chessboard` + puzzle square highlights |
-| **`ThemeProvider`** | Light/dark chessboard square colors (`board/chessboardTheme`) |
-| **`boardSquareHighlightColors`** | Check / hint / incorrect overlays |
-| **`analysisSidebarColors`** | Analysis move-list striping |
+| **`analysisSidebarColors`** | Default analysis move-list striping (override in your app) |
+
+**From `react-chess-core` (install separately):** `HighlightChessboard`, `ThemeProvider`, `boardSquareHighlightColors`, `useAnalysisEngine`, `formatEvaluation`, `DEFAULT_STOCKFISH_SCRIPT_URL`, etc.
 
 ### Analysis
 
@@ -178,10 +185,10 @@ Analysis is split so apps can use **presets** or go **fully headless**:
 
 ### Engine
 
-| Export | Role |
-|--------|------|
-| **`useAnalysisEngine`** | React hook: Stockfish eval + PV for a FEN |
-| **`EngineEvaluationPanel`** | Default engine UI (used by `AnalysisBoard` unless overridden) |
+| Export | Package | Role |
+|--------|---------|------|
+| **`useAnalysisEngine`**, eval helpers | `react-chess-core` | Stockfish hook + PV formatting |
+| **`EngineEvaluationPanel`** | puzzle-kit | Default engine UI (`AnalysisBoard` preset) |
 
 ---
 
@@ -201,7 +208,7 @@ Analysis is split so apps can use **presets** or go **fully headless**:
 
 **Separation of concerns**
 
-- **Logic** — position, analysis context, engine hook, ply navigation (`core/` + `engine/`).
+- **Logic** — puzzle position, analysis context, ply navigation (`analysis/core/`); engine hook from **`react-chess-core`**.
 - **UI** — host render props, or `defaults/` (`AnalysisBoard`, `DefaultAnalysisSidebar`, `DefaultAnalysisContainer`, `EngineEvaluationPanel`).
 
 Production apps (e.g. endchess-frontend) typically pass custom `renderAnalysis*` implementations and sizes via `puzzleBoardWidth` + `analysisLayout`, while reusing `useAnalysisBoardModel` behavior through `AnalysisBoardCore`.
@@ -290,6 +297,19 @@ npm run storybook          # component docs & examples
 npm run build-storybook    # static Storybook export
 npm run copy:stockfish     # engine binaries for local Storybook
 ```
+
+---
+
+## Migration: engine/board imports
+
+If you previously imported these from `react-chess-puzzle-kit`, switch to `react-chess-core`:
+
+```diff
+- import { useAnalysisEngine, formatEvaluation, ThemeProvider } from 'react-chess-puzzle-kit';
++ import { useAnalysisEngine, formatEvaluation, ThemeProvider } from 'react-chess-core';
+```
+
+Keep puzzle-specific imports on puzzle-kit (`PuzzleBoardWithControls`, `usePuzzleAnalysis`, `AnalysisBoardCore`, render-prop types, etc.).
 
 ---
 
