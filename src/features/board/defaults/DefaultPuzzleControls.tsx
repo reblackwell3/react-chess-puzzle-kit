@@ -4,11 +4,18 @@ import {
   PuzzleResultStatus,
 } from '../../analysis';
 
+export type PuzzleControlState = {
+  canShowHint: boolean;
+  canShowSolution: boolean;
+};
+
 export type PuzzleControlsRenderProps = {
   showHint: () => void;
+  showSolution: () => void;
   nextPuzzle: () => void;
   resultStatus: PuzzleResultStatus;
   analysis: AnalysisControls;
+  controlState: PuzzleControlState;
 };
 
 const isAttemptFinished = (resultStatus: PuzzleResultStatus) =>
@@ -17,13 +24,28 @@ const isAttemptFinished = (resultStatus: PuzzleResultStatus) =>
 /** Library default hint / next / analysis / result controls (unstyled buttons). */
 export const DefaultPuzzleControls = ({
   showHint,
+  showSolution,
   nextPuzzle,
   resultStatus,
   analysis,
+  controlState,
 }: PuzzleControlsRenderProps) => (
   <div style={rowStyle}>
-    <button type="button" onClick={showHint} style={buttonStyle}>
+    <button
+      type="button"
+      onClick={showHint}
+      style={buttonStyle}
+      disabled={!controlState.canShowHint}
+    >
       Hint
+    </button>
+    <button
+      type="button"
+      onClick={showSolution}
+      style={buttonStyle}
+      disabled={!controlState.canShowSolution}
+    >
+      Show solution
     </button>
     <button type="button" onClick={nextPuzzle} style={buttonStyle}>
       Next puzzle
@@ -44,15 +66,19 @@ export const DefaultPuzzleControls = ({
 
 export const defaultRenderControls = (
   showHint: () => void,
+  showSolution: () => void,
   nextPuzzle: () => void,
   resultStatus: PuzzleResultStatus,
   analysis: AnalysisControls,
+  controlState: PuzzleControlState,
 ) => (
   <DefaultPuzzleControls
     showHint={showHint}
+    showSolution={showSolution}
     nextPuzzle={nextPuzzle}
     resultStatus={resultStatus}
     analysis={analysis}
+    controlState={controlState}
   />
 );
 

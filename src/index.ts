@@ -9,7 +9,10 @@ export {
   DefaultPuzzleControls,
   defaultRenderControls,
 } from './features/board/defaults/DefaultPuzzleControls';
-export type { PuzzleControlsRenderProps } from './features/board/defaults/DefaultPuzzleControls';
+export type {
+  PuzzleControlState,
+  PuzzleControlsRenderProps,
+} from './features/board/defaults/DefaultPuzzleControls';
 export { DEFAULT_PUZZLE_BOARD_WIDTH } from './features/board/puzzleBoardLayout';
 export {
   EngineEvaluationPanel,

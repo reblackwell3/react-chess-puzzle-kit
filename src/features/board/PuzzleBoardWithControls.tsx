@@ -15,7 +15,10 @@ import {
   usePuzzleAnalysis,
 } from '../analysis';
 import { AnalysisEngineOptions, ThemeProvider } from 'react-chess-core';
-import { defaultRenderControls } from './defaults/DefaultPuzzleControls';
+import {
+  defaultRenderControls,
+  type PuzzleControlState,
+} from './defaults/DefaultPuzzleControls';
 import { BlankPuzzleBoard } from './BlankPuzzleBoard';
 import { PuzzleBoard } from './PuzzleBoard';
 import {
@@ -42,7 +45,10 @@ export {
   DefaultPuzzleControls,
   defaultRenderControls,
 } from './defaults/DefaultPuzzleControls';
-export type { PuzzleControlsRenderProps } from './defaults/DefaultPuzzleControls';
+export type {
+  PuzzleControlState,
+  PuzzleControlsRenderProps,
+} from './defaults/DefaultPuzzleControls';
 
 /** Delay before auto-playing the opponent's opening move (ms). */
 const OPPONENT_OPENING_MOVE_DELAY_MS = 500;
@@ -57,6 +63,7 @@ export interface PuzzleBoardWithControlsProps {
       index: number;
       guess?: { sourceSquare: string; targetSquare: string; piece: string };
       hintRequested?: boolean;
+      solutionShown?: boolean;
       isCorrect?: boolean;
       isFinished?: boolean;
     }) => void;
@@ -64,9 +71,11 @@ export interface PuzzleBoardWithControlsProps {
   /** Omit to use {@link defaultRenderControls} / {@link DefaultPuzzleControls}. */
   renderControls?: (
     showHint: () => void,
+    showSolution: () => void,
     nextPuzzle: () => void,
     resultStatus: PuzzleResultStatus,
     analysis: AnalysisControls,
+    controlState: PuzzleControlState,
   ) => React.ReactNode;
   renderAnalysisSidebar?: (
     props: AnalysisSidebarRenderProps,
@@ -155,10 +164,15 @@ export const PuzzleBoardWithControls = ({
     index: number;
     guess?: { sourceSquare: string; targetSquare: string; piece: string };
     hintRequested?: boolean;
+    solutionShown?: boolean;
     isCorrect?: boolean;
     isFinished?: boolean;
   }) => {
-    if (feedbackData.hintRequested || feedbackData.isCorrect === false) {
+    if (
+      feedbackData.hintRequested ||
+      feedbackData.solutionShown ||
+      feedbackData.isCorrect === false
+    ) {
       setHasIncorrectAttempt(true);
     }
     if (feedbackData.isFinished) {
@@ -200,11 +214,75 @@ export const PuzzleBoardWithControls = ({
     }, 500);
   };
 
+  const handleShowSolution = () => {
+    if (!position || position.isFinished() || position.isSolutionRevealed()) {
+      return;
+    }
+
+    position.recordSolutionShown();
+    position.setSolutionRevealed(true);
+    position.wantsHint(false);
+    handleFeedback({
+      index: position.getIndex(),
+      solutionShown: true,
+      isCorrect: false,
+    });
+    incInteractionNum();
+
+    const SOLUTION_STEP_MS = 500;
+
+    const advance = () => {
+      if (!position.isFinished() && position.next()) {
+        incInteractionNum();
+        setTimeout(() => {
+          if (!position.isFinished()) {
+            position.next();
+            incInteractionNum();
+          }
+          if (position.isFinished()) {
+            setPuzzleComplete(true);
+            handleFeedback({
+              index: position.getIndex(),
+              isFinished: true,
+              isCorrect: false,
+            });
+            incInteractionNum();
+            return;
+          }
+          setTimeout(advance, SOLUTION_STEP_MS);
+        }, SOLUTION_STEP_MS);
+        return;
+      }
+
+      if (position.isFinished()) {
+        setPuzzleComplete(true);
+        handleFeedback({
+          index: position.getIndex(),
+          isFinished: true,
+          isCorrect: false,
+        });
+        incInteractionNum();
+      }
+    };
+
+    advance();
+  };
+
   const handleNextPuzzle = () => {
     setPuzzleNum((prevPuzzleNum) => prevPuzzleNum + 1);
   };
 
   const resultStatus = getResultStatus();
+  const controlState: PuzzleControlState = {
+    canShowHint:
+      position !== null &&
+      resultStatus === 'none' &&
+      !position.isSolutionRevealed(),
+    canShowSolution:
+      position !== null &&
+      !position.isFinished() &&
+      !position.isSolutionRevealed(),
+  };
   const analysis = usePuzzleAnalysis(position, resultStatus, puzzleNum);
   const analysisSnapshot =
     analysis.isOpen && analysis.snapshot ? analysis.snapshot : null;
@@ -272,10 +350,17 @@ export const PuzzleBoardWithControls = ({
             )}
           </div>
           <div style={puzzleControlsSlotStyle()}>
-            {renderControls(handleHintRequest, handleNextPuzzle, resultStatus, {
-              visible: analysis.canOpen,
-              openAnalysis: analysis.openAnalysis,
-            })}
+            {renderControls(
+              handleHintRequest,
+              handleShowSolution,
+              handleNextPuzzle,
+              resultStatus,
+              {
+                visible: analysis.canOpen,
+                openAnalysis: analysis.openAnalysis,
+              },
+              controlState,
+            )}
           </div>
         </div>
       )}

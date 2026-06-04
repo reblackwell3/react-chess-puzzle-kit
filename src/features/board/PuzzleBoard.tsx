@@ -20,6 +20,10 @@ export const PuzzleBoard = ({
     targetSquare: string,
     piece: string,
   ) => {
+    if (position.isSolutionRevealed()) {
+      return false;
+    }
+
     if (!position.isLegalMove(sourceSquare, targetSquare)) {
       return false;
     }

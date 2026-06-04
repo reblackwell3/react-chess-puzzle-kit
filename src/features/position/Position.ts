@@ -82,6 +82,7 @@ export class PuzzlePosition extends Position {
   protected isCorrect: boolean = false;
   protected guessedMove: string = '';
   protected isHintWanted: boolean = false;
+  protected solutionRevealed: boolean = false;
   protected playerColor: string;
   protected readonly initialFen: string;
   protected moveHistory: PuzzleMoveRecord[] = [];
@@ -138,6 +139,24 @@ export class PuzzlePosition extends Position {
       actor: 'attempt',
       isCorrect: false,
     });
+  }
+
+  recordSolutionShown(): void {
+    this.moveHistory.push({
+      ply: this.moveHistory.length,
+      uci: '',
+      san: 'Solution',
+      actor: 'attempt',
+      isCorrect: false,
+    });
+  }
+
+  setSolutionRevealed(revealed: boolean): void {
+    this.solutionRevealed = revealed;
+  }
+
+  isSolutionRevealed(): boolean {
+    return this.solutionRevealed;
   }
 
   /** Chess-legal move from the current puzzle position (ignores solution line). */
