@@ -7,6 +7,8 @@ export interface PuzzleBoardProps {
   onFeedback: (feedbackData: any) => void;
   incInteractionNum: () => void;
   boardWidth: number;
+  /** After a wrong guess, play the correct move instead of allowing retries. */
+  revealAnswerOnIncorrect?: boolean;
 }
 
 export const PuzzleBoard = ({
@@ -14,6 +16,7 @@ export const PuzzleBoard = ({
   onFeedback,
   incInteractionNum,
   boardWidth,
+  revealAnswerOnIncorrect = false,
 }: PuzzleBoardProps) => {
   const onPieceDrop = (
     sourceSquare: string,
@@ -37,7 +40,12 @@ export const PuzzleBoard = ({
       });
       incInteractionNum();
       setTimeout(() => {
-        position.resetInteractions();
+        if (revealAnswerOnIncorrect) {
+          position.resetInteractions();
+          position.revealCorrectMove();
+        } else {
+          position.resetInteractions();
+        }
         incInteractionNum();
       }, 500);
       return false;

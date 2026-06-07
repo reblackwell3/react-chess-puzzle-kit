@@ -275,6 +275,18 @@ export class PuzzlePosition extends Position {
     this.isHintWanted = false;
   }
 
+  /** Play the expected move at the current index and lock further input. */
+  revealCorrectMove(): boolean {
+    if (this.solutionRevealed || this.i >= this.moves.length) {
+      return false;
+    }
+    const played = this.next();
+    if (played) {
+      this.solutionRevealed = true;
+    }
+    return played;
+  }
+
   /** True when the last correct guess applied an alternative checkmate. */
   isAlternativeCheckmate(): boolean {
     return this.usedAlternativeCheckmate;

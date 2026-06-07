@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   AnalysisBoard,
   AnalysisBoardCore,
@@ -53,6 +53,9 @@ export type {
 /** Delay before auto-playing the opponent's opening move (ms). */
 const OPPONENT_OPENING_MOVE_DELAY_MS = 500;
 
+/** Brief pause so the user sees a correct result before the next card loads. */
+const AUTO_ADVANCE_ON_COMPLETE_DELAY_MS = 700;
+
 export interface PuzzleBoardWithControlsProps {
   theme: 'light' | 'dark';
   apiProxy: {
@@ -93,6 +96,10 @@ export interface PuzzleBoardWithControlsProps {
   /** Custom board/sidebar placement (overrides {@link analysisLayout} grid). */
   renderAnalysisMain?: (props: AnalysisMainRenderProps) => React.ReactNode;
   engine?: AnalysisEngineOptions;
+  /** After a clean solve (no wrong move, hint, or solution reveal), load the next card. */
+  autoAdvanceOnComplete?: boolean;
+  /** After a wrong guess, play the correct move and wait for the user to advance. */
+  revealAnswerOnIncorrect?: boolean;
 }
 
 export const PuzzleBoardWithControls = ({
@@ -106,6 +113,8 @@ export const PuzzleBoardWithControls = ({
   analysisLayout = DEFAULT_ANALYSIS_LAYOUT,
   renderAnalysisMain,
   engine,
+  autoAdvanceOnComplete = false,
+  revealAnswerOnIncorrect = false,
 }: PuzzleBoardWithControlsProps) => {
   const { onFetch, onFetchError, onFeedback } = apiProxy;
 
@@ -268,11 +277,34 @@ export const PuzzleBoardWithControls = ({
     advance();
   };
 
-  const handleNextPuzzle = () => {
+  const handleNextPuzzle = useCallback(() => {
     setPuzzleNum((prevPuzzleNum) => prevPuzzleNum + 1);
-  };
+  }, []);
 
   const resultStatus = getResultStatus();
+
+  useEffect(() => {
+    if (!autoAdvanceOnComplete) {
+      return;
+    }
+    if (resultStatus !== 'complete' || hasIncorrectAttempt) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      handleNextPuzzle();
+    }, AUTO_ADVANCE_ON_COMPLETE_DELAY_MS);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [
+    autoAdvanceOnComplete,
+    resultStatus,
+    hasIncorrectAttempt,
+    handleNextPuzzle,
+    puzzleNum,
+  ]);
   const controlState: PuzzleControlState = {
     canShowHint:
       position !== null &&
@@ -289,8 +321,8 @@ export const PuzzleBoardWithControls = ({
 
   const useHostAnalysisUi = Boolean(
     renderAnalysisSidebar &&
-      renderAnalysisContainer &&
-      (renderEngineEvaluation || engine?.enabled === false),
+    renderAnalysisContainer &&
+    (renderEngineEvaluation || engine?.enabled === false),
   );
 
   return (
@@ -298,42 +330,40 @@ export const PuzzleBoardWithControls = ({
       {analysisSnapshot ? (
         <AnalysisErrorBoundary onClose={analysis.closeAnalysis}>
           {useHostAnalysisUi ? (
-          <AnalysisBoardCore
-            analysisContext={analysisSnapshot}
-            onClose={analysis.closeAnalysis}
-            theme={theme}
-            boardWidth={analysisLayout.boardWidth}
-            engine={engine}
-            renderMain={
-              renderAnalysisMain ??
-              (({ board, sidebar, model }) => (
-                <AnalysisBoardLayout
-                  layout={analysisLayout}
-                  model={model}
-                  board={board}
-                  sidebar={sidebar}
-                />
-              ))
-            }
-            renderSidebar={renderAnalysisSidebar!}
-            renderContainer={renderAnalysisContainer!}
-            renderEngineEvaluation={
-              renderEngineEvaluation ?? (() => null)
-            }
-          />
-        ) : (
-          <AnalysisBoard
-            analysisContext={analysisSnapshot}
-            onClose={analysis.closeAnalysis}
-            theme={theme}
-            layout={analysisLayout}
-            engine={engine}
-            renderMain={renderAnalysisMain}
-            renderSidebar={renderAnalysisSidebar}
-            renderContainer={renderAnalysisContainer}
-            renderEngineEvaluation={renderEngineEvaluation}
-          />
-        )}
+            <AnalysisBoardCore
+              analysisContext={analysisSnapshot}
+              onClose={analysis.closeAnalysis}
+              theme={theme}
+              boardWidth={analysisLayout.boardWidth}
+              engine={engine}
+              renderMain={
+                renderAnalysisMain ??
+                (({ board, sidebar, model }) => (
+                  <AnalysisBoardLayout
+                    layout={analysisLayout}
+                    model={model}
+                    board={board}
+                    sidebar={sidebar}
+                  />
+                ))
+              }
+              renderSidebar={renderAnalysisSidebar!}
+              renderContainer={renderAnalysisContainer!}
+              renderEngineEvaluation={renderEngineEvaluation ?? (() => null)}
+            />
+          ) : (
+            <AnalysisBoard
+              analysisContext={analysisSnapshot}
+              onClose={analysis.closeAnalysis}
+              theme={theme}
+              layout={analysisLayout}
+              engine={engine}
+              renderMain={renderAnalysisMain}
+              renderSidebar={renderAnalysisSidebar}
+              renderContainer={renderAnalysisContainer}
+              renderEngineEvaluation={renderEngineEvaluation}
+            />
+          )}
         </AnalysisErrorBoundary>
       ) : (
         <div style={puzzlePlayColumnStyle(puzzleBoardWidth)}>
@@ -344,6 +374,7 @@ export const PuzzleBoardWithControls = ({
                 boardWidth={puzzleBoardWidth}
                 onFeedback={handleFeedback}
                 incInteractionNum={incInteractionNum}
+                revealAnswerOnIncorrect={revealAnswerOnIncorrect}
               />
             ) : (
               <BlankPuzzleBoard boardWidth={puzzleBoardWidth} />
