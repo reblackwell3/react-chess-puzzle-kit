@@ -5,10 +5,16 @@
 export * from './features/analysis';
 export * from './features/board/PuzzleBoard';
 export * from './features/board/PuzzleBoardWithControls';
+export * from './features/board/LineBoard';
+export * from './features/board/LineBoardWithControls';
 export {
   DefaultPuzzleControls,
   defaultRenderControls,
 } from './features/board/defaults/DefaultPuzzleControls';
+export {
+  DefaultLineControls,
+  defaultRenderLineControls,
+} from './features/board/defaults/DefaultLineControls';
 export type {
   PuzzleControlState,
   PuzzleControlsRenderProps,
