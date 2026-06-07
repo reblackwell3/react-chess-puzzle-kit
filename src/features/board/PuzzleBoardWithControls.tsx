@@ -145,14 +145,18 @@ export const PuzzleBoardWithControls = ({
         }
         const newPosition = new PuzzlePosition(data.fen, data.moves);
         setPosition(newPosition);
-        openingMoveTimeoutId = setTimeout(() => {
-          if (cancelled) {
-            return;
-          }
-          if (newPosition.next()) {
-            incInteractionNum();
-          }
-        }, OPPONENT_OPENING_MOVE_DELAY_MS);
+        // Multi-move puzzles lead with an opponent setup ply; single-move lines
+        // (e.g. a first-ply opening trainer) are already on the player to move.
+        if (data.moves.length > 1) {
+          openingMoveTimeoutId = setTimeout(() => {
+            if (cancelled) {
+              return;
+            }
+            if (newPosition.next()) {
+              incInteractionNum();
+            }
+          }, OPPONENT_OPENING_MOVE_DELAY_MS);
+        }
       })
       .catch((error: unknown) => {
         if (!cancelled) {

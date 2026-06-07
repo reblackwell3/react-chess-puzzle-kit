@@ -78,6 +78,23 @@ export function getCheckSquareFromChess(chess: Chess): string {
   return kingSquare ?? '';
 }
 
+/** Side to move for the final (user) ply in a puzzle line. */
+export function playerColorForSolution(
+  initialFen: string,
+  moves: string[],
+): 'white' | 'black' {
+  const chess = new Chess(initialFen);
+  const setupPlies = Math.max(0, moves.length - 1);
+  for (let j = 0; j < setupPlies; j++) {
+    const uci = moves[j];
+    const from = uci.slice(0, 2) as Square;
+    const to = uci.slice(2, 4) as Square;
+    const promotion = uci.length > 4 ? uci[4] : undefined;
+    chess.move({ from, to, promotion });
+  }
+  return chess.turn() === 'w' ? 'white' : 'black';
+}
+
 export class PuzzlePosition extends Position {
   protected isCorrect: boolean = false;
   protected guessedMove: string = '';
@@ -93,7 +110,7 @@ export class PuzzlePosition extends Position {
     this.initialFen = initialFEN;
     this.chess.load(initialFEN);
     this.moves = moves;
-    this.playerColor = this.chess.turn() === 'b' ? 'white' : 'black';
+    this.playerColor = playerColorForSolution(initialFEN, moves);
   }
 
   next(): boolean {
