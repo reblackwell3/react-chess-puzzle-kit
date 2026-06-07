@@ -1,6 +1,6 @@
 import { Chess, Square } from 'chess.js';
 import { uciPvToSan } from 'react-chess-core';
-import { getCheckSquareFromChess } from '../../position/Position';
+import { applyUciMove, getCheckSquareFromChess } from '../../position/Position';
 import { PuzzleAnalysisContext } from './analysisContext';
 
 export type SolutionMoveDisplay = {
@@ -52,13 +52,14 @@ export class AnalysisPosition {
     const chess = new Chess(initialFen);
     return solutionMoves.map((uci, index) => {
       let san = uci;
-      try {
-        const move = chess.move(uci);
+      const before = chess.fen();
+      if (applyUciMove(chess, uci)) {
+        const move = chess.history({ verbose: true }).at(-1);
         if (move?.san) {
           san = move.san;
         }
-      } catch {
-        // Keep UCI label if the solution line cannot be replayed from the start FEN.
+      } else {
+        chess.load(before);
       }
       return {
         ply: index + 1,
@@ -69,11 +70,7 @@ export class AnalysisPosition {
   }
 
   private static applySolutionMove(chess: Chess, uci: string): boolean {
-    try {
-      return chess.move(uci) !== null;
-    } catch {
-      return false;
-    }
+    return applyUciMove(chess, uci);
   }
 
   private fenAtMainPly(ply: number): string {

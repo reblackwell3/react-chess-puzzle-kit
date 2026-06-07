@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AnalysisBoard,
   AnalysisBoardCore,
@@ -54,6 +54,8 @@ const OPPONENT_OPENING_MOVE_DELAY_MS = 500;
 
 /** Brief pause so the user sees a correct result before the next card loads. */
 const AUTO_ADVANCE_ON_COMPLETE_DELAY_MS = 700;
+
+const SOLUTION_STEP_MS = 500;
 
 export interface PuzzleBoardWithControlsProps {
   theme: 'light' | 'dark';
@@ -122,9 +124,20 @@ export const PuzzleBoardWithControls = ({
   const [hasIncorrectAttempt, setHasIncorrectAttempt] = useState(false);
   const [puzzleComplete, setPuzzleComplete] = useState(false);
   const [, setInteractionNum] = useState(0);
+  const solutionAnimationRef = useRef<{
+    cancelled: boolean;
+    timeoutIds: ReturnType<typeof setTimeout>[];
+  }>({ cancelled: false, timeoutIds: [] });
 
   const incInteractionNum = () => {
     setInteractionNum((prev) => prev + 1);
+  };
+
+  const clearSolutionAnimation = () => {
+    const anim = solutionAnimationRef.current;
+    anim.cancelled = true;
+    anim.timeoutIds.forEach(clearTimeout);
+    solutionAnimationRef.current = { cancelled: false, timeoutIds: [] };
   };
 
   useEffect(() => {
@@ -166,6 +179,7 @@ export const PuzzleBoardWithControls = ({
 
     return () => {
       cancelled = true;
+      clearSolutionAnimation();
       if (openingMoveTimeoutId !== undefined) {
         clearTimeout(openingMoveTimeoutId);
       }
@@ -226,8 +240,98 @@ export const PuzzleBoardWithControls = ({
     }, 500);
   };
 
+  const runSolutionWalkthrough = (
+    pos: PuzzlePosition,
+    emitFinishFeedback: boolean,
+  ) => {
+    clearSolutionAnimation();
+    const anim = {
+      cancelled: false,
+      timeoutIds: [] as ReturnType<typeof setTimeout>[],
+    };
+    solutionAnimationRef.current = anim;
+
+    const schedule = (fn: () => void, ms: number) => {
+      const id = setTimeout(() => {
+        if (anim.cancelled) {
+          return;
+        }
+        fn();
+      }, ms);
+      anim.timeoutIds.push(id);
+    };
+
+    const finish = () => {
+      setPuzzleComplete(true);
+      if (emitFinishFeedback) {
+        handleFeedback({
+          index: pos.getIndex(),
+          isFinished: true,
+          isCorrect: false,
+        });
+      }
+      incInteractionNum();
+    };
+
+    const playNextMove = (): boolean => {
+      if (pos.isFinished()) {
+        return false;
+      }
+      const played = pos.next();
+      if (played) {
+        incInteractionNum();
+      }
+      return played;
+    };
+
+    const advance = () => {
+      if (anim.cancelled || pos.isFinished()) {
+        if (pos.isFinished()) {
+          finish();
+        }
+        return;
+      }
+
+      if (!playNextMove()) {
+        if (pos.isFinished()) {
+          finish();
+        }
+        return;
+      }
+
+      schedule(() => {
+        if (anim.cancelled) {
+          return;
+        }
+
+        playNextMove();
+
+        if (pos.isFinished()) {
+          finish();
+          return;
+        }
+
+        schedule(advance, SOLUTION_STEP_MS);
+      }, SOLUTION_STEP_MS);
+    };
+
+    advance();
+  };
+
   const handleShowSolution = () => {
-    if (!position || position.isFinished() || position.isSolutionRevealed()) {
+    if (!position) {
+      return;
+    }
+
+    if (position.isSolutionRevealed()) {
+      position.replaySolution();
+      setPuzzleComplete(false);
+      incInteractionNum();
+      runSolutionWalkthrough(position, false);
+      return;
+    }
+
+    if (position.isFinished()) {
       return;
     }
 
@@ -240,44 +344,7 @@ export const PuzzleBoardWithControls = ({
       isCorrect: false,
     });
     incInteractionNum();
-
-    const SOLUTION_STEP_MS = 500;
-
-    const advance = () => {
-      if (!position.isFinished() && position.next()) {
-        incInteractionNum();
-        setTimeout(() => {
-          if (!position.isFinished()) {
-            position.next();
-            incInteractionNum();
-          }
-          if (position.isFinished()) {
-            setPuzzleComplete(true);
-            handleFeedback({
-              index: position.getIndex(),
-              isFinished: true,
-              isCorrect: false,
-            });
-            incInteractionNum();
-            return;
-          }
-          setTimeout(advance, SOLUTION_STEP_MS);
-        }, SOLUTION_STEP_MS);
-        return;
-      }
-
-      if (position.isFinished()) {
-        setPuzzleComplete(true);
-        handleFeedback({
-          index: position.getIndex(),
-          isFinished: true,
-          isCorrect: false,
-        });
-        incInteractionNum();
-      }
-    };
-
-    advance();
+    runSolutionWalkthrough(position, true);
   };
 
   const handleNextPuzzle = useCallback(() => {
@@ -315,8 +382,7 @@ export const PuzzleBoardWithControls = ({
       !position.isSolutionRevealed(),
     canShowSolution:
       position !== null &&
-      !position.isFinished() &&
-      !position.isSolutionRevealed(),
+      (position.isSolutionRevealed() || !position.isFinished()),
   };
   const analysis = usePuzzleAnalysis(position, resultStatus, puzzleNum);
   const analysisSnapshot =

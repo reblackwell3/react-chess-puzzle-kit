@@ -2,6 +2,28 @@ import { Traversable } from './Traversable';
 import { Chess, Square } from 'chess.js';
 import { PuzzleMoveRecord } from './moveHistory';
 
+/** Apply a UCI move (e.g. `e7e8q`) without throwing. */
+export function applyUciMove(chess: Chess, uci: string): boolean {
+  if (!uci || uci.length < 4) {
+    return false;
+  }
+
+  const from = uci.slice(0, 2) as Square;
+  const to = uci.slice(2, 4) as Square;
+  const promotion = uci.length > 4 ? uci[4] : undefined;
+
+  try {
+    return chess.move({ from, to, promotion }) !== null;
+  } catch {
+    try {
+      chess.move(uci);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
 export abstract class Position implements Traversable {
   protected chess: Chess;
   protected moves: string[];
@@ -18,12 +40,17 @@ export abstract class Position implements Traversable {
 
   // Common methods shared by all positions
   next(): boolean {
-    if (this.i < this.moves.length) {
-      this.chess.move(this.moves[this.i]);
-      this.i++;
-      return true;
+    if (this.i >= this.moves.length) {
+      return false;
     }
-    return false;
+
+    const uci = this.moves[this.i];
+    if (!applyUciMove(this.chess, uci)) {
+      return false;
+    }
+
+    this.i++;
+    return true;
   }
 
   prev(): boolean {
@@ -86,11 +113,7 @@ export function playerColorForSolution(
   const chess = new Chess(initialFen);
   const setupPlies = Math.max(0, moves.length - 1);
   for (let j = 0; j < setupPlies; j++) {
-    const uci = moves[j];
-    const from = uci.slice(0, 2) as Square;
-    const to = uci.slice(2, 4) as Square;
-    const promotion = uci.length > 4 ? uci[4] : undefined;
-    chess.move({ from, to, promotion });
+    applyUciMove(chess, moves[j]);
   }
   return chess.turn() === 'w' ? 'white' : 'black';
 }
@@ -176,6 +199,22 @@ export class PuzzlePosition extends Position {
     return this.solutionRevealed;
   }
 
+  /** Reset the board to replay an already-revealed solution walkthrough. */
+  replaySolution(): void {
+    this.chess.load(this.initialFen);
+    this.i = 0;
+    this.isCorrect = false;
+    this.guessedMove = '';
+    this.isHintWanted = false;
+    this.usedAlternativeCheckmate = false;
+    this.solutionRevealed = true;
+
+    const solutionIdx = this.moveHistory.findIndex((m) => m.san === 'Solution');
+    if (solutionIdx >= 0) {
+      this.moveHistory = this.moveHistory.slice(0, solutionIdx + 1);
+    }
+  }
+
   /** Chess-legal move from the current puzzle position (ignores solution line). */
   isLegalMove(sourceSquare: string, targetSquare: string): boolean {
     if (sourceSquare === targetSquare) {
@@ -200,15 +239,10 @@ export class PuzzlePosition extends Position {
   }
 
   private tryMakeUciMove(chess: Chess, uci: string) {
-    const from = uci.slice(0, 2) as Square;
-    const to = uci.slice(2, 4) as Square;
-    const promotion = uci.length > 4 ? uci[4] : undefined;
-
-    try {
-      return chess.move({ from, to, promotion });
-    } catch {
+    if (!applyUciMove(chess, uci)) {
       return null;
     }
+    return chess.history({ verbose: true }).at(-1) ?? null;
   }
 
   private isCheckmatingMove(uci: string): boolean {
