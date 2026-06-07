@@ -63,7 +63,7 @@ export const useAnalysisBoardModel = ({
   const bumpNav = () => setNavRevision((value) => value + 1);
 
   useEffect(() => {
-    analysisPosition.goToNavPly(analysisContext.solutionMoves.length);
+    analysisPosition.goToNavPly(analysisContext.currentPly);
     bumpNav();
 
     skipBackdropCloseRef.current = true;
