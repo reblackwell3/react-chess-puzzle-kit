@@ -1,7 +1,4 @@
-import { ChessboardDnDProvider } from 'react-chessboard';
-import { HighlightChessboard } from 'react-chess-core';
-
-const EMPTY_BOARD_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
+import { PuzzlePlaySurface } from './PuzzlePlaySurface';
 
 export interface BlankPuzzleBoardProps {
   boardWidth: number;
@@ -9,16 +6,10 @@ export interface BlankPuzzleBoardProps {
 
 /** Placeholder board that preserves puzzle layout while the next position loads. */
 export const BlankPuzzleBoard = ({ boardWidth }: BlankPuzzleBoardProps) => (
-  <ChessboardDnDProvider>
-    <HighlightChessboard
-      boardWidth={boardWidth}
-      checkSquare=""
-      hintSquare={null}
-      incorrectMoveSquare={null}
-      position={EMPTY_BOARD_FEN}
-      arePiecesDraggable={false}
-      boardOrientation="white"
-      promotionDialogVariant="modal"
-    />
-  </ChessboardDnDProvider>
+  <PuzzlePlaySurface
+    position={null}
+    onFeedback={() => {}}
+    incInteractionNum={() => {}}
+    boardWidth={boardWidth}
+  />
 );

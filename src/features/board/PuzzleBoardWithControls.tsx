@@ -19,8 +19,7 @@ import {
   defaultRenderControls,
   type PuzzleControlState,
 } from './defaults/DefaultPuzzleControls';
-import { BlankPuzzleBoard } from './BlankPuzzleBoard';
-import { PuzzleBoard } from './PuzzleBoard';
+import { PuzzlePlaySurface } from './PuzzlePlaySurface';
 import {
   DEFAULT_PUZZLE_BOARD_WIDTH,
   puzzleBoardSlotStyle,
@@ -133,6 +132,8 @@ export const PuzzleBoardWithControls = ({
     let openingMoveTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
     setPosition(null);
+    setHasIncorrectAttempt(false);
+    setPuzzleComplete(false);
     onFetch()
       .then((data) => {
         if (cancelled) {
@@ -142,8 +143,6 @@ export const PuzzleBoardWithControls = ({
           console.error('Invalid data fetched:', data);
           return;
         }
-        setHasIncorrectAttempt(false);
-        setPuzzleComplete(false);
         const newPosition = new PuzzlePosition(data.fen, data.moves);
         setPosition(newPosition);
         openingMoveTimeoutId = setTimeout(() => {
@@ -368,17 +367,13 @@ export const PuzzleBoardWithControls = ({
       ) : (
         <div style={puzzlePlayColumnStyle(puzzleBoardWidth)}>
           <div style={puzzleBoardSlotStyle()}>
-            {position ? (
-              <PuzzleBoard
-                position={position}
-                boardWidth={puzzleBoardWidth}
-                onFeedback={handleFeedback}
-                incInteractionNum={incInteractionNum}
-                revealAnswerOnIncorrect={revealAnswerOnIncorrect}
-              />
-            ) : (
-              <BlankPuzzleBoard boardWidth={puzzleBoardWidth} />
-            )}
+            <PuzzlePlaySurface
+              position={position}
+              boardWidth={puzzleBoardWidth}
+              onFeedback={handleFeedback}
+              incInteractionNum={incInteractionNum}
+              revealAnswerOnIncorrect={revealAnswerOnIncorrect}
+            />
           </div>
           <div style={puzzleControlsSlotStyle()}>
             {renderControls(
