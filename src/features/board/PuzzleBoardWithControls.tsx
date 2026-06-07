@@ -208,21 +208,21 @@ export const PuzzleBoardWithControls = ({
   };
 
   const getResultStatus = (): PuzzleResultStatus => {
+    const finished =
+      puzzleComplete || (position !== null && position.isFinished());
+
+    if (finished) {
+      return 'complete';
+    }
+
     if (!position) {
-      if (hasIncorrectAttempt) {
-        return 'incorrect';
-      }
-      if (puzzleComplete) {
-        return 'complete';
-      }
       return 'none';
     }
+
     if (hasIncorrectAttempt) {
       return 'incorrect';
     }
-    if (puzzleComplete || position.isFinished()) {
-      return 'complete';
-    }
+
     return 'none';
   };
 
