@@ -23,4 +23,9 @@ export const analysisSidebarColors = {
     { light: '#eef5fb', dark: '#2c3540' },
     { light: '#f7fbfe', dark: '#343f4c' },
   ],
+  /** Text on variation rows (light backgrounds need dark type). */
+  variationText: {
+    light: 'rgba(0, 0, 0, 0.87)',
+    dark: 'rgba(0, 0, 0, 0.87)',
+  },
 } as const;

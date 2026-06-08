@@ -23,7 +23,7 @@ export default {
       // Add dependencies to pre-optimization
       plugins: [tsconfigPaths({ logLevel: 'debug' })],
       optimizeDeps: {
-        include: ['storybook-dark-mode'],
+        include: ['storybook-dark-mode', 'react-chess-core'],
       },
     });
     console.log('Resolved paths:', modifiedConfig.resolve.alias);

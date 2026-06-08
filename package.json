@@ -33,9 +33,8 @@
   "scripts": {
     "build": "rollup -c",
     "copy:stockfish": "node scripts/copy-stockfish.mjs",
-    "ensure:chess-core": "(test -f ../react-chess-core/dist/index.esm.js || npm run build --prefix ../react-chess-core) && rm -rf node_modules/react-chess-core/dist && cp -r ../react-chess-core/dist node_modules/react-chess-core/dist",
     "prepare": "rollup -c",
-    "prestorybook": "npm run copy:stockfish && npm run ensure:chess-core",
+    "prestorybook": "npm run copy:stockfish",
     "test": "jest --config jest.config.cjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
@@ -44,7 +43,6 @@
   },
   "dependencies": {
     "chess.js": "^1.0.0-beta.8",
-    "react-chess-core": "file:../react-chess-core",
     "rollup": "^4.22.2",
     "rollup-plugin-peer-deps-external": "^2.2.4",
     "rollup-plugin-typescript2": "^0.36.0",
@@ -78,11 +76,13 @@
     "chess.js": "^1.0.0-beta.8",
     "jest": "^29.7.0",
     "prop-types": "^15.8.1",
-    "ts-jest": "^29.2.4",
     "react": "^18.3.1",
+    "react-chess-core": "^0.1.0",
     "react-chessboard": "^4.7.1",
     "storybook": "^8.2.9",
     "storybook-dark-mode": "^4.0.2",
+    "ts-jest": "^29.2.4",
+    "vite": "^5.4.11",
     "vite-tsconfig-paths": "^5.0.1"
   },
   "optionalDependencies": {
