@@ -1,20 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { PuzzleResultStatus, usePuzzleAnalysis } from '../analysis';
 import {
   AnalysisBoard,
   AnalysisBoardCore,
   AnalysisBoardLayout,
   AnalysisContainerRenderProps,
   AnalysisControls,
+  AnalysisEngineOptions,
   AnalysisErrorBoundary,
   AnalysisLayoutConfig,
   AnalysisMainRenderProps,
   AnalysisSidebarRenderProps,
   DEFAULT_ANALYSIS_LAYOUT,
   EngineEvaluationRenderProps,
-  PuzzleResultStatus,
-  usePuzzleAnalysis,
-} from '../analysis';
-import { AnalysisEngineOptions, ThemeProvider } from 'react-chess-core';
+  ThemeProvider,
+} from 'react-chess-core';
 import {
   defaultRenderControls,
   type PuzzleControlState,
@@ -35,10 +35,9 @@ export type {
   AnalysisMainRenderProps,
   AnalysisSidebarRenderProps,
   EngineEvaluationRenderProps,
-  PuzzleAnalysisContext,
-  PuzzleResultStatus,
-} from '../analysis';
-export { DEFAULT_ANALYSIS_LAYOUT } from '../analysis';
+} from 'react-chess-core';
+export type { PuzzleAnalysisContext, PuzzleResultStatus } from '../analysis';
+export { DEFAULT_ANALYSIS_LAYOUT } from 'react-chess-core';
 export { DEFAULT_PUZZLE_BOARD_WIDTH } from './puzzleBoardLayout';
 export {
   DefaultPuzzleControls,

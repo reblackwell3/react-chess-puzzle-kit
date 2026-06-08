@@ -1,8 +1,6 @@
 import React from 'react';
-import {
-  AnalysisControls,
-  PuzzleResultStatus,
-} from '../../analysis';
+import { PuzzleResultStatus } from '../../analysis';
+import { AnalysisControls } from 'react-chess-core';
 
 export type PuzzleControlState = {
   canShowHint: boolean;

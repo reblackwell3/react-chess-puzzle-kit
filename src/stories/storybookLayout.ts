@@ -1,4 +1,4 @@
-import { AnalysisLayoutConfig } from '../features/analysis/core/analysisLayoutConfig';
+import { AnalysisLayoutConfig } from 'react-chess-core';
 
 /** Smaller boards for Storybook previews (production defaults stay at 480+). */
 export const STORYBOOK_BOARD_WIDTH = 360;

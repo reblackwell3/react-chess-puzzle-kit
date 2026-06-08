@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { PuzzlePosition } from '../../position/Position';
-import { PuzzleResultStatus } from './analysisContext';
+import type { AnalysisContext } from 'react-chess-core';
+import { PuzzlePosition } from '../position/Position';
 import {
   buildAnalysisContext,
   isAnalysisAvailable,
-  PuzzleAnalysisContext,
+  PuzzleResultStatus,
 } from './analysisContext';
 
 export const usePuzzleAnalysis = (
@@ -13,7 +13,7 @@ export const usePuzzleAnalysis = (
   puzzleNum: number,
 ) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [snapshot, setSnapshot] = useState<PuzzleAnalysisContext | null>(null);
+  const [snapshot, setSnapshot] = useState<AnalysisContext | null>(null);
 
   const canOpen = isAnalysisAvailable(position, resultStatus);
 

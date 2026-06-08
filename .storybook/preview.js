@@ -1,5 +1,5 @@
 /** @type { import('@storybook/react').Preview } */
-import withThemeProvider from '@stories/withThemeProvider';
+import withThemeProvider from '../src/stories/withThemeProvider';
 const preview = {
   parameters: {
     controls: {

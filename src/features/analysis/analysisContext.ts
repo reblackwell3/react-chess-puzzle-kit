@@ -1,27 +1,21 @@
-import { PuzzleMoveRecord } from '../../position/moveHistory';
-import { PuzzlePosition } from '../../position/Position';
+import type { AnalysisContext } from 'react-chess-core';
+import { PuzzlePosition } from '../position/Position';
 
 export type PuzzleResultStatus = 'none' | 'incorrect' | 'complete';
 
-export type PuzzleAnalysisContext = {
-  initialFen: string;
-  solutionMoves: string[];
-  moveHistory: PuzzleMoveRecord[];
-  currentPly: number;
-  boardOrientation: 'white' | 'black';
-};
+/** @deprecated Use {@link AnalysisContext} from `react-chess-core`. */
+export type PuzzleAnalysisContext = AnalysisContext;
 
-export const emptyAnalysisContext = (): PuzzleAnalysisContext => ({
+export const emptyAnalysisContext = (): AnalysisContext => ({
   initialFen: '',
   solutionMoves: [],
-  moveHistory: [],
   currentPly: 0,
   boardOrientation: 'white',
 });
 
 export const buildAnalysisContext = (
   position: PuzzlePosition | null,
-): PuzzleAnalysisContext => {
+): AnalysisContext => {
   if (!position) {
     return emptyAnalysisContext();
   }
@@ -29,7 +23,6 @@ export const buildAnalysisContext = (
   return {
     initialFen: position.getInitialFen(),
     solutionMoves: position.getSolutionMoves(),
-    moveHistory: position.getMoveHistory(),
     currentPly: position.getIndex(),
     boardOrientation: position.getPlayerColor() as 'white' | 'black',
   };
