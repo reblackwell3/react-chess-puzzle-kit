@@ -49,6 +49,48 @@ describe('applyUciMove', () => {
   });
 });
 
+describe('PuzzlePosition getSideToMove', () => {
+  it('reflects the active side from the current FEN', () => {
+    const position = new PuzzlePosition(PROMOTION_FEN, ['e7e8q']);
+
+    expect(position.getSideToMove()).toBe('white');
+    position.next();
+    expect(position.getSideToMove()).toBe('black');
+  });
+});
+
+describe('PuzzlePosition resume review', () => {
+  it('starts at the missed ply and only accepts input on quiz indices', () => {
+    const position = new PuzzlePosition(DUAL_CHECKMATE_FEN, DUAL_CHECKMATE_MOVES, {
+      startIndex: 3,
+      quizAtIndices: [3],
+    });
+
+    expect(position.getIndex()).toBe(3);
+    expect(position.isQuizIndex()).toBe(true);
+    expect(
+      position.tryGuess('d1', 'd8', 'Q').accepted,
+    ).toBe(true);
+  });
+
+  it('auto-advances through non-quiz plies after a correct quiz move', () => {
+    const position = new PuzzlePosition(DUAL_CHECKMATE_FEN, DUAL_CHECKMATE_MOVES, {
+      startIndex: 1,
+      quizAtIndices: [1, 5],
+    });
+
+    expect(position.tryGuess('a7', 'f7', 'Q').accepted).toBe(true);
+    position.next();
+
+    while (!position.isFinished() && !position.isQuizIndex()) {
+      expect(position.next()).toBe(true);
+    }
+
+    expect(position.getIndex()).toBe(5);
+    expect(position.isQuizIndex()).toBe(true);
+  });
+});
+
 describe('PuzzlePosition solution walkthrough', () => {
   it('plays a promotion finishing move through next()', () => {
     const position = new PuzzlePosition(PROMOTION_FEN, ['e7e8q']);

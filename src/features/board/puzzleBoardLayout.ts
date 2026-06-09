@@ -13,6 +13,14 @@ export const puzzlePlayColumnStyle = (boardWidth: number): CSSProperties => ({
   maxWidth: '100%',
 });
 
+export const puzzleBoardCaptionSlotStyle = (): CSSProperties => ({
+  width: '100%',
+  flexShrink: 0,
+  display: 'flex',
+  justifyContent: 'center',
+  marginBottom: 4,
+});
+
 export const puzzleBoardSlotStyle = (): CSSProperties => ({
   width: '100%',
   aspectRatio: '1 / 1',

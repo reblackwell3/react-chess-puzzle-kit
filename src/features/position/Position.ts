@@ -75,6 +75,10 @@ export abstract class Position implements Traversable {
     return this.chess.fen();
   }
 
+  getSideToMove(): 'white' | 'black' {
+    return this.chess.turn() === 'w' ? 'white' : 'black';
+  }
+
   getCheckSquare(): string {
     return getCheckSquareFromChess(this.chess);
   }
@@ -118,6 +122,11 @@ export function playerColorForSolution(
   return chess.turn() === 'w' ? 'white' : 'black';
 }
 
+export type PuzzleResumeConfig = {
+  startIndex: number;
+  quizAtIndices: number[];
+};
+
 export class PuzzlePosition extends Position {
   protected isCorrect: boolean = false;
   protected guessedMove: string = '';
@@ -127,13 +136,25 @@ export class PuzzlePosition extends Position {
   protected readonly initialFen: string;
   protected moveHistory: PuzzleMoveRecord[] = [];
   private usedAlternativeCheckmate = false;
+  private readonly resumeConfig?: PuzzleResumeConfig;
 
-  constructor(initialFEN: string, moves: string[]) {
+  constructor(
+    initialFEN: string,
+    moves: string[],
+    resumeConfig?: PuzzleResumeConfig,
+  ) {
     super();
     this.initialFen = initialFEN;
     this.chess.load(initialFEN);
     this.moves = moves;
     this.playerColor = playerColorForSolution(initialFEN, moves);
+    this.resumeConfig = resumeConfig;
+
+    if (resumeConfig) {
+      for (let j = 0; j < resumeConfig.startIndex; j++) {
+        super.next();
+      }
+    }
   }
 
   next(): boolean {
@@ -372,6 +393,22 @@ export class PuzzlePosition extends Position {
 
   getPlayerColor(): string {
     return this.playerColor;
+  }
+
+  hasResumeConfig(): boolean {
+    return this.resumeConfig !== undefined;
+  }
+
+  getResumeConfig(): PuzzleResumeConfig | undefined {
+    return this.resumeConfig;
+  }
+
+  /** True when the user must find the move at the current index. */
+  isQuizIndex(): boolean {
+    if (!this.resumeConfig) {
+      return !this.isFinished();
+    }
+    return this.resumeConfig.quizAtIndices.includes(this.i);
   }
 }
 

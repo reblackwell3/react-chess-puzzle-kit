@@ -18,6 +18,8 @@ export interface PuzzlePlaySurfaceProps {
   }) => void;
   incInteractionNum: () => void;
   boardWidth: number;
+  /** After a correct move in resume review, auto-show intervening plies. */
+  onResumeCorrect?: (position: PuzzlePosition) => void;
   /** After a wrong guess, play the correct move instead of allowing retries. */
   revealAnswerOnIncorrect?: boolean;
   /** After a wrong guess, show an arrow to the correct square and allow retries. */
@@ -34,6 +36,7 @@ export const PuzzlePlaySurface = ({
   onFeedback,
   incInteractionNum,
   boardWidth,
+  onResumeCorrect,
   revealAnswerOnIncorrect = false,
   showAnswerArrowOnIncorrect = false,
   answerArrowColor = DEFAULT_ANSWER_ARROW_COLOR,
@@ -67,6 +70,10 @@ export const PuzzlePlaySurface = ({
     piece: string,
   ) => {
     if (!position || position.isSolutionRevealed()) {
+      return false;
+    }
+
+    if (position.hasResumeConfig() && !position.isQuizIndex()) {
       return false;
     }
 
@@ -117,6 +124,12 @@ export const PuzzlePlaySurface = ({
 
     position.next();
     incInteractionNum();
+
+    if (position.hasResumeConfig()) {
+      onResumeCorrect?.(position);
+      return true;
+    }
+
     setTimeout(() => {
       if (!position.isFinished()) {
         position.next();

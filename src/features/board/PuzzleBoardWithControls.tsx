@@ -22,6 +22,7 @@ import {
 import { PuzzlePlaySurface } from './PuzzlePlaySurface';
 import {
   DEFAULT_PUZZLE_BOARD_WIDTH,
+  puzzleBoardCaptionSlotStyle,
   puzzleBoardSlotStyle,
   puzzleControlsSlotStyle,
   puzzlePlayColumnStyle,
@@ -48,6 +49,10 @@ export type {
   PuzzleControlsRenderProps,
 } from './defaults/DefaultPuzzleControls';
 
+export type BoardCaptionRenderProps = {
+  sideToMove: 'white' | 'black';
+};
+
 /** Delay before auto-playing the opponent's opening move (ms). */
 const OPPONENT_OPENING_MOVE_DELAY_MS = 500;
 
@@ -55,11 +60,21 @@ const OPPONENT_OPENING_MOVE_DELAY_MS = 500;
 const AUTO_ADVANCE_ON_COMPLETE_DELAY_MS = 700;
 
 const SOLUTION_STEP_MS = 500;
+const RESUME_AUTO_STEP_MS = 500;
+
+export type PuzzleFetchResult = {
+  fen: string;
+  moves: string[];
+  resume?: {
+    startIndex: number;
+    quizAtIndices: number[];
+  };
+};
 
 export interface PuzzleBoardWithControlsProps {
   theme: 'light' | 'dark';
   apiProxy: {
-    onFetch: () => Promise<{ fen: string; moves: string[] }>;
+    onFetch: () => Promise<PuzzleFetchResult>;
     /** Called when {@link onFetch} rejects (e.g. network / server down). */
     onFetchError?: (error: unknown) => void;
     onFeedback: (feedbackData: {
@@ -89,6 +104,8 @@ export interface PuzzleBoardWithControlsProps {
   renderEngineEvaluation?: (
     props: EngineEvaluationRenderProps,
   ) => React.ReactNode;
+  /** Optional label above the board (e.g. side to move). */
+  renderBoardCaption?: (props: BoardCaptionRenderProps) => React.ReactNode;
   /** Pixel width of the live puzzle board (separate from analysis). */
   puzzleBoardWidth?: number;
   /** Board + sidebar grid sizes when analysis is open. */
@@ -114,6 +131,7 @@ export const PuzzleBoardWithControls = ({
   renderAnalysisSidebar,
   renderAnalysisContainer,
   renderEngineEvaluation,
+  renderBoardCaption,
   puzzleBoardWidth = DEFAULT_PUZZLE_BOARD_WIDTH,
   analysisLayout = DEFAULT_ANALYSIS_LAYOUT,
   renderAnalysisMain,
@@ -135,6 +153,10 @@ export const PuzzleBoardWithControls = ({
     cancelled: boolean;
     timeoutIds: ReturnType<typeof setTimeout>[];
   }>({ cancelled: false, timeoutIds: [] });
+  const resumeAnimationRef = useRef<{
+    cancelled: boolean;
+    timeoutIds: ReturnType<typeof setTimeout>[];
+  }>({ cancelled: false, timeoutIds: [] });
 
   const incInteractionNum = () => {
     setInteractionNum((prev) => prev + 1);
@@ -145,6 +167,13 @@ export const PuzzleBoardWithControls = ({
     anim.cancelled = true;
     anim.timeoutIds.forEach(clearTimeout);
     solutionAnimationRef.current = { cancelled: false, timeoutIds: [] };
+  };
+
+  const clearResumeAnimation = () => {
+    const anim = resumeAnimationRef.current;
+    anim.cancelled = true;
+    anim.timeoutIds.forEach(clearTimeout);
+    resumeAnimationRef.current = { cancelled: false, timeoutIds: [] };
   };
 
   useEffect(() => {
@@ -163,11 +192,15 @@ export const PuzzleBoardWithControls = ({
           console.error('Invalid data fetched:', data);
           return;
         }
-        const newPosition = new PuzzlePosition(data.fen, data.moves);
+        const newPosition = new PuzzlePosition(
+          data.fen,
+          data.moves,
+          data.resume,
+        );
         setPosition(newPosition);
         // Multi-move puzzles lead with an opponent setup ply; single-move lines
         // (e.g. a first-ply opening trainer) are already on the player to move.
-        if (data.moves.length > 1) {
+        if (!data.resume && data.moves.length > 1) {
           openingMoveTimeoutId = setTimeout(() => {
             if (cancelled) {
               return;
@@ -187,6 +220,7 @@ export const PuzzleBoardWithControls = ({
     return () => {
       cancelled = true;
       clearSolutionAnimation();
+      clearResumeAnimation();
       if (openingMoveTimeoutId !== undefined) {
         clearTimeout(openingMoveTimeoutId);
       }
@@ -325,6 +359,63 @@ export const PuzzleBoardWithControls = ({
     advance();
   };
 
+  const runResumeAutoAdvance = (pos: PuzzlePosition) => {
+    clearResumeAnimation();
+    const anim = {
+      cancelled: false,
+      timeoutIds: [] as ReturnType<typeof setTimeout>[],
+    };
+    resumeAnimationRef.current = anim;
+
+    const schedule = (fn: () => void, ms: number) => {
+      const id = setTimeout(() => {
+        if (anim.cancelled) {
+          return;
+        }
+        fn();
+      }, ms);
+      anim.timeoutIds.push(id);
+    };
+
+    const finish = () => {
+      setPuzzleComplete(true);
+      handleFeedback({
+        index: pos.getIndex(),
+        isCorrect: true,
+        isFinished: true,
+      });
+      incInteractionNum();
+    };
+
+    const step = () => {
+      if (anim.cancelled) {
+        return;
+      }
+
+      if (pos.isFinished()) {
+        finish();
+        return;
+      }
+
+      if (pos.isQuizIndex()) {
+        return;
+      }
+
+      if (!pos.next()) {
+        if (pos.isFinished()) {
+          finish();
+        }
+        return;
+      }
+
+      incInteractionNum();
+
+      schedule(step, RESUME_AUTO_STEP_MS);
+    };
+
+    schedule(step, RESUME_AUTO_STEP_MS);
+  };
+
   const handleShowSolution = () => {
     if (!position) {
       return;
@@ -389,7 +480,7 @@ export const PuzzleBoardWithControls = ({
   const controlState: PuzzleControlState = {
     canShowHint:
       position !== null &&
-      resultStatus === 'none' &&
+      !position.isFinished() &&
       !position.isSolutionRevealed(),
     canShowSolution:
       position !== null &&
@@ -447,12 +538,18 @@ export const PuzzleBoardWithControls = ({
         </AnalysisErrorBoundary>
       ) : (
         <div style={puzzlePlayColumnStyle(puzzleBoardWidth)}>
+          {position && renderBoardCaption && (
+            <div style={puzzleBoardCaptionSlotStyle()}>
+              {renderBoardCaption({ sideToMove: position.getSideToMove() })}
+            </div>
+          )}
           <div style={puzzleBoardSlotStyle()}>
             <PuzzlePlaySurface
               position={position}
               boardWidth={puzzleBoardWidth}
               onFeedback={handleFeedback}
               incInteractionNum={incInteractionNum}
+              onResumeCorrect={runResumeAutoAdvance}
               revealAnswerOnIncorrect={revealAnswerOnIncorrect}
               showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
               answerArrowColor={answerArrowColor}
