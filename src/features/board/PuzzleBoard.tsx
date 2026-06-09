@@ -8,6 +8,9 @@ export interface PuzzleBoardProps {
   boardWidth: number;
   /** After a wrong guess, play the correct move instead of allowing retries. */
   revealAnswerOnIncorrect?: boolean;
+  /** After a wrong guess, show an arrow to the correct square and allow retries. */
+  showAnswerArrowOnIncorrect?: boolean;
+  answerArrowColor?: string;
 }
 
 export const PuzzleBoard = ({
@@ -16,6 +19,8 @@ export const PuzzleBoard = ({
   incInteractionNum,
   boardWidth,
   revealAnswerOnIncorrect = false,
+  showAnswerArrowOnIncorrect = false,
+  answerArrowColor,
 }: PuzzleBoardProps) => (
   <PuzzlePlaySurface
     position={position}
@@ -23,5 +28,7 @@ export const PuzzleBoard = ({
     incInteractionNum={incInteractionNum}
     boardWidth={boardWidth}
     revealAnswerOnIncorrect={revealAnswerOnIncorrect}
+    showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
+    answerArrowColor={answerArrowColor}
   />
 );

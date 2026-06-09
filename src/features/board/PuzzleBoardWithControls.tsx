@@ -98,8 +98,13 @@ export interface PuzzleBoardWithControlsProps {
   engine?: AnalysisEngineOptions;
   /** After a clean solve (no wrong move, hint, or solution reveal), load the next card. */
   autoAdvanceOnComplete?: boolean;
+  /** With {@link autoAdvanceOnComplete}, also advance after finishing following a miss or hint. */
+  autoAdvanceOnCompleteAfterIncorrect?: boolean;
   /** After a wrong guess, play the correct move and wait for the user to advance. */
   revealAnswerOnIncorrect?: boolean;
+  /** After a wrong guess, show an arrow to the correct square and allow retries. */
+  showAnswerArrowOnIncorrect?: boolean;
+  answerArrowColor?: string;
 }
 
 export const PuzzleBoardWithControls = ({
@@ -114,7 +119,10 @@ export const PuzzleBoardWithControls = ({
   renderAnalysisMain,
   engine,
   autoAdvanceOnComplete = false,
+  autoAdvanceOnCompleteAfterIncorrect = false,
   revealAnswerOnIncorrect = false,
+  showAnswerArrowOnIncorrect = false,
+  answerArrowColor,
 }: PuzzleBoardWithControlsProps) => {
   const { onFetch, onFetchError, onFeedback } = apiProxy;
 
@@ -356,7 +364,10 @@ export const PuzzleBoardWithControls = ({
     if (!autoAdvanceOnComplete) {
       return;
     }
-    if (resultStatus !== 'complete' || hasIncorrectAttempt) {
+    if (resultStatus !== 'complete') {
+      return;
+    }
+    if (hasIncorrectAttempt && !autoAdvanceOnCompleteAfterIncorrect) {
       return;
     }
 
@@ -369,6 +380,7 @@ export const PuzzleBoardWithControls = ({
     };
   }, [
     autoAdvanceOnComplete,
+    autoAdvanceOnCompleteAfterIncorrect,
     resultStatus,
     hasIncorrectAttempt,
     handleNextPuzzle,
@@ -442,6 +454,8 @@ export const PuzzleBoardWithControls = ({
               onFeedback={handleFeedback}
               incInteractionNum={incInteractionNum}
               revealAnswerOnIncorrect={revealAnswerOnIncorrect}
+              showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
+              answerArrowColor={answerArrowColor}
             />
           </div>
           <div style={puzzleControlsSlotStyle()}>

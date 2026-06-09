@@ -1,8 +1,10 @@
+import { useEffect, useMemo, useState } from 'react';
 import { ChessboardDnDProvider } from 'react-chessboard';
 import { HighlightChessboard } from 'react-chess-core';
 import { PuzzlePosition } from '../position/Position';
 
 const EMPTY_BOARD_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
+const DEFAULT_ANSWER_ARROW_COLOR = '#42a5f5';
 
 export interface PuzzlePlaySurfaceProps {
   position: PuzzlePosition | null;
@@ -18,6 +20,9 @@ export interface PuzzlePlaySurfaceProps {
   boardWidth: number;
   /** After a wrong guess, play the correct move instead of allowing retries. */
   revealAnswerOnIncorrect?: boolean;
+  /** After a wrong guess, show an arrow to the correct square and allow retries. */
+  showAnswerArrowOnIncorrect?: boolean;
+  answerArrowColor?: string;
 }
 
 /**
@@ -30,7 +35,32 @@ export const PuzzlePlaySurface = ({
   incInteractionNum,
   boardWidth,
   revealAnswerOnIncorrect = false,
+  showAnswerArrowOnIncorrect = false,
+  answerArrowColor = DEFAULT_ANSWER_ARROW_COLOR,
 }: PuzzlePlaySurfaceProps) => {
+  const [showAnswerArrow, setShowAnswerArrow] = useState(false);
+
+  useEffect(() => {
+    setShowAnswerArrow(false);
+  }, [position]);
+
+  const customArrows = useMemo<[string, string, string][]>(() => {
+    if (!showAnswerArrow || !position) {
+      return [];
+    }
+    const expectedUci = position.getExpectedMoveUci();
+    if (expectedUci.length < 4) {
+      return [];
+    }
+    return [
+      [
+        expectedUci.slice(0, 2),
+        expectedUci.slice(2, 4),
+        answerArrowColor,
+      ],
+    ];
+  }, [showAnswerArrow, position, answerArrowColor]);
+
   const onPieceDrop = (
     sourceSquare: string,
     targetSquare: string,
@@ -53,7 +83,10 @@ export const PuzzlePlaySurface = ({
       });
       incInteractionNum();
       setTimeout(() => {
-        if (revealAnswerOnIncorrect) {
+        if (showAnswerArrowOnIncorrect) {
+          position.resetInteractions();
+          setShowAnswerArrow(true);
+        } else if (revealAnswerOnIncorrect) {
           position.resetInteractions();
           position.revealCorrectMove();
         } else {
@@ -64,6 +97,7 @@ export const PuzzlePlaySurface = ({
       return false;
     }
 
+    setShowAnswerArrow(false);
     onFeedback({
       index: position.getIndex(),
       guess: { sourceSquare, targetSquare, piece },
@@ -99,11 +133,17 @@ export const PuzzlePlaySurface = ({
         boardWidth={boardWidth}
         checkSquare={position?.getCheckSquare() ?? ''}
         hintSquare={position?.getHintSquare() ?? null}
-        incorrectMoveSquare={position?.getIncorrectMoveSquare() ?? null}
+        incorrectMoveSquare={
+          showAnswerArrowOnIncorrect
+            ? null
+            : (position?.getIncorrectMoveSquare() ?? null)
+        }
+        customArrows={customArrows}
         onPieceDrop={onPieceDrop}
         position={position?.fen() ?? EMPTY_BOARD_FEN}
         boardOrientation={position?.getPlayerColor() ?? 'white'}
         arePiecesDraggable={position !== null}
+        areArrowsAllowed={false}
         promotionDialogVariant="modal"
       />
     </ChessboardDnDProvider>

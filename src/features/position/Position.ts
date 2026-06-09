@@ -365,6 +365,11 @@ export class PuzzlePosition extends Position {
     return this.guessedMove.slice(2, 4);
   }
 
+  /** UCI of the move the player should play at the current index. */
+  getExpectedMoveUci(): string {
+    return this.moves[this.i] ?? '';
+  }
+
   getPlayerColor(): string {
     return this.playerColor;
   }
