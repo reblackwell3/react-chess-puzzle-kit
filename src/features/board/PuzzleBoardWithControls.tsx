@@ -50,7 +50,10 @@ export type {
 } from './defaults/DefaultPuzzleControls';
 
 export type BoardCaptionRenderProps = {
-  sideToMove: 'white' | 'black';
+  /** null while the puzzle position is loading */
+  sideToMove: 'white' | 'black' | null;
+  /** Side the user is solving for; null while loading */
+  playerColor: 'white' | 'black' | null;
 };
 
 /** Delay before auto-playing the opponent's opening move (ms). */
@@ -538,9 +541,14 @@ export const PuzzleBoardWithControls = ({
         </AnalysisErrorBoundary>
       ) : (
         <div style={puzzlePlayColumnStyle(puzzleBoardWidth)}>
-          {position && renderBoardCaption && (
+          {renderBoardCaption && (
             <div style={puzzleBoardCaptionSlotStyle()}>
-              {renderBoardCaption({ sideToMove: position.getSideToMove() })}
+              {renderBoardCaption({
+                sideToMove: position?.getSideToMove() ?? null,
+                playerColor: position
+                  ? (position.getPlayerColor() as 'white' | 'black')
+                  : null,
+              })}
             </div>
           )}
           <div style={puzzleBoardSlotStyle()}>

@@ -6,6 +6,9 @@ export const DEFAULT_PUZZLE_BOARD_WIDTH = 480;
 /** Minimum height reserved below the board so controls do not shift when status changes. */
 export const PUZZLE_CONTROLS_MIN_HEIGHT = 96;
 
+/** Minimum height reserved above the board so the caption slot does not shift between loads. */
+export const PUZZLE_BOARD_CAPTION_MIN_HEIGHT = 24;
+
 export const puzzlePlayColumnStyle = (boardWidth: number): CSSProperties => ({
   display: 'flex',
   flexDirection: 'column',
@@ -15,9 +18,11 @@ export const puzzlePlayColumnStyle = (boardWidth: number): CSSProperties => ({
 
 export const puzzleBoardCaptionSlotStyle = (): CSSProperties => ({
   width: '100%',
+  minHeight: PUZZLE_BOARD_CAPTION_MIN_HEIGHT,
   flexShrink: 0,
   display: 'flex',
   justifyContent: 'center',
+  alignItems: 'center',
   marginBottom: 4,
 });
 
