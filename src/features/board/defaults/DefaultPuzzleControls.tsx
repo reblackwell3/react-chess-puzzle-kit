@@ -82,12 +82,10 @@ export const defaultRenderControls = (
 
 const rowStyle: React.CSSProperties = {
   display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'center',
+  flexDirection: 'column',
+  alignItems: 'stretch',
   gap: 8,
   width: '100%',
-  minHeight: 96,
-  alignContent: 'flex-start',
 };
 
 const buttonStyle: React.CSSProperties = {

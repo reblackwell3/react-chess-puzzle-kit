@@ -5,8 +5,9 @@ import { LineBoard } from './LineBoard';
 import {
   DEFAULT_PUZZLE_BOARD_WIDTH,
   puzzleBoardSlotStyle,
+  puzzleBoardColumnStyle,
   puzzleControlsSlotStyle,
-  puzzlePlayColumnStyle,
+  puzzlePlayRowStyle,
 } from './puzzleBoardLayout';
 import { defaultRenderLineControls } from './defaults/DefaultLineControls';
 
@@ -192,16 +193,18 @@ export const LineBoardWithControls = ({
 
   return (
     <ThemeProvider theme={theme}>
-      <div style={puzzlePlayColumnStyle(boardWidth)}>
-        <div style={puzzleBoardSlotStyle()}>
-          <LineBoard
-            fen={fen}
-            orientation={orientation}
-            trainSide={line.trainSide}
-            draggable={isUserTurn}
-            onPieceDrop={handleDrop}
-            boardWidth={boardWidth}
-          />
+      <div style={puzzlePlayRowStyle()}>
+        <div style={puzzleBoardColumnStyle(boardWidth)}>
+          <div style={puzzleBoardSlotStyle()}>
+            <LineBoard
+              fen={fen}
+              orientation={orientation}
+              trainSide={line.trainSide}
+              draggable={isUserTurn}
+              onPieceDrop={handleDrop}
+              boardWidth={boardWidth}
+            />
+          </div>
         </div>
         <div style={puzzleControlsSlotStyle()}>
           {renderControls({

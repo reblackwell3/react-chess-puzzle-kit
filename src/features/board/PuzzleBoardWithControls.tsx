@@ -23,9 +23,10 @@ import { PuzzlePlaySurface } from './PuzzlePlaySurface';
 import {
   DEFAULT_PUZZLE_BOARD_WIDTH,
   puzzleBoardCaptionSlotStyle,
+  puzzleBoardColumnStyle,
   puzzleBoardSlotStyle,
   puzzleControlsSlotStyle,
-  puzzlePlayColumnStyle,
+  puzzlePlayRowStyle,
 } from './puzzleBoardLayout';
 import { PuzzlePosition } from '../position/Position';
 export type { PuzzleMoveRecord } from '../position/moveHistory';
@@ -540,28 +541,30 @@ export const PuzzleBoardWithControls = ({
           )}
         </AnalysisErrorBoundary>
       ) : (
-        <div style={puzzlePlayColumnStyle(puzzleBoardWidth)}>
-          {renderBoardCaption && (
-            <div style={puzzleBoardCaptionSlotStyle()}>
-              {renderBoardCaption({
-                sideToMove: position?.getSideToMove() ?? null,
-                playerColor: position
-                  ? (position.getPlayerColor() as 'white' | 'black')
-                  : null,
-              })}
+        <div style={puzzlePlayRowStyle()}>
+          <div style={puzzleBoardColumnStyle(puzzleBoardWidth)}>
+            {renderBoardCaption && (
+              <div style={puzzleBoardCaptionSlotStyle()}>
+                {renderBoardCaption({
+                  sideToMove: position?.getSideToMove() ?? null,
+                  playerColor: position
+                    ? (position.getPlayerColor() as 'white' | 'black')
+                    : null,
+                })}
+              </div>
+            )}
+            <div style={puzzleBoardSlotStyle()}>
+              <PuzzlePlaySurface
+                position={position}
+                boardWidth={puzzleBoardWidth}
+                onFeedback={handleFeedback}
+                incInteractionNum={incInteractionNum}
+                onResumeCorrect={runResumeAutoAdvance}
+                revealAnswerOnIncorrect={revealAnswerOnIncorrect}
+                showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
+                answerArrowColor={answerArrowColor}
+              />
             </div>
-          )}
-          <div style={puzzleBoardSlotStyle()}>
-            <PuzzlePlaySurface
-              position={position}
-              boardWidth={puzzleBoardWidth}
-              onFeedback={handleFeedback}
-              incInteractionNum={incInteractionNum}
-              onResumeCorrect={runResumeAutoAdvance}
-              revealAnswerOnIncorrect={revealAnswerOnIncorrect}
-              showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
-              answerArrowColor={answerArrowColor}
-            />
           </div>
           <div style={puzzleControlsSlotStyle()}>
             {renderControls(
