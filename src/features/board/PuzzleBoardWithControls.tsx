@@ -24,7 +24,9 @@ import {
   DEFAULT_PUZZLE_BOARD_WIDTH,
   puzzleBoardCaptionSlotStyle,
   puzzleBoardColumnStyle,
+  puzzleBoardFeedbackOverlayStyle,
   puzzleBoardSlotStyle,
+  puzzleBoardSlotWrapperStyle,
   puzzleControlsSlotStyle,
   puzzlePlayRowStyle,
 } from './puzzleBoardLayout';
@@ -55,6 +57,10 @@ export type BoardCaptionRenderProps = {
   sideToMove: 'white' | 'black' | null;
   /** Side the user is solving for; null while loading */
   playerColor: 'white' | 'black' | null;
+};
+
+export type BoardFeedbackRenderProps = {
+  resultStatus: Extract<PuzzleResultStatus, 'complete' | 'incorrect'>;
 };
 
 /** Delay before auto-playing the opponent's opening move (ms). */
@@ -110,6 +116,8 @@ export interface PuzzleBoardWithControlsProps {
   ) => React.ReactNode;
   /** Optional label above the board (e.g. side to move). */
   renderBoardCaption?: (props: BoardCaptionRenderProps) => React.ReactNode;
+  /** Optional result feedback overlaid on the bottom-right of the board. */
+  renderBoardFeedback?: (props: BoardFeedbackRenderProps) => React.ReactNode;
   /** Pixel width of the live puzzle board (separate from analysis). */
   puzzleBoardWidth?: number;
   /** Board + sidebar grid sizes when analysis is open. */
@@ -136,6 +144,7 @@ export const PuzzleBoardWithControls = ({
   renderAnalysisContainer,
   renderEngineEvaluation,
   renderBoardCaption,
+  renderBoardFeedback,
   puzzleBoardWidth = DEFAULT_PUZZLE_BOARD_WIDTH,
   analysisLayout = DEFAULT_ANALYSIS_LAYOUT,
   renderAnalysisMain,
@@ -553,17 +562,26 @@ export const PuzzleBoardWithControls = ({
                 })}
               </div>
             )}
-            <div style={puzzleBoardSlotStyle()}>
-              <PuzzlePlaySurface
-                position={position}
-                boardWidth={puzzleBoardWidth}
-                onFeedback={handleFeedback}
-                incInteractionNum={incInteractionNum}
-                onResumeCorrect={runResumeAutoAdvance}
-                revealAnswerOnIncorrect={revealAnswerOnIncorrect}
-                showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
-                answerArrowColor={answerArrowColor}
-              />
+            <div style={puzzleBoardSlotWrapperStyle()}>
+              <div style={puzzleBoardSlotStyle()}>
+                <PuzzlePlaySurface
+                  position={position}
+                  boardWidth={puzzleBoardWidth}
+                  onFeedback={handleFeedback}
+                  incInteractionNum={incInteractionNum}
+                  onResumeCorrect={runResumeAutoAdvance}
+                  revealAnswerOnIncorrect={revealAnswerOnIncorrect}
+                  showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
+                  answerArrowColor={answerArrowColor}
+                />
+              </div>
+              {renderBoardFeedback &&
+                (resultStatus === 'complete' ||
+                  resultStatus === 'incorrect') && (
+                  <div style={puzzleBoardFeedbackOverlayStyle()}>
+                    {renderBoardFeedback({ resultStatus })}
+                  </div>
+                )}
             </div>
           </div>
           <div style={puzzleControlsSlotStyle()}>

@@ -39,10 +39,28 @@ export const puzzleBoardCaptionSlotStyle = (): CSSProperties => ({
   marginBottom: 4,
 });
 
+export const puzzleBoardSlotWrapperStyle = (): CSSProperties => ({
+  position: 'relative',
+  width: '100%',
+  flexShrink: 0,
+});
+
 export const puzzleBoardSlotStyle = (): CSSProperties => ({
   width: '100%',
   aspectRatio: '1 / 1',
   flexShrink: 0,
+});
+
+export const puzzleBoardFeedbackOverlayStyle = (): CSSProperties => ({
+  position: 'absolute',
+  right: 8,
+  bottom: 8,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-end',
+  gap: 4,
+  pointerEvents: 'none',
+  zIndex: 2,
 });
 
 export const puzzleControlsSlotStyle = (): CSSProperties => ({
