@@ -8,7 +8,9 @@ import {
   puzzleBoardColumnStyle,
   puzzleControlsSlotStyle,
   puzzlePlayRowStyle,
+  type PuzzleControlsPlacement,
 } from './puzzleBoardLayout';
+import { useStackPuzzleControlsBelow } from './useStackPuzzleControlsBelow';
 import { defaultRenderLineControls } from './defaults/DefaultLineControls';
 
 export type LineTrainSide = 'w' | 'b';
@@ -190,11 +192,15 @@ export const LineBoardWithControls = ({
   const moveNumber = Math.min(currentIndex + 1, total);
   const isUserTurn =
     !finished && turnFromFen(fen) === line.trainSide && currentIndex < total;
+  const stackControlsBelow = useStackPuzzleControlsBelow();
+  const controlsPlacement: PuzzleControlsPlacement = stackControlsBelow
+    ? 'below'
+    : 'beside';
 
   return (
     <ThemeProvider theme={theme}>
-      <div style={puzzlePlayRowStyle()}>
-        <div style={puzzleBoardColumnStyle(boardWidth)}>
+      <div style={puzzlePlayRowStyle(controlsPlacement)}>
+        <div style={puzzleBoardColumnStyle(boardWidth, controlsPlacement)}>
           <div style={puzzleBoardSlotStyle()}>
             <LineBoard
               fen={fen}
@@ -206,7 +212,7 @@ export const LineBoardWithControls = ({
             />
           </div>
         </div>
-        <div style={puzzleControlsSlotStyle()}>
+        <div style={puzzleControlsSlotStyle(controlsPlacement)}>
           {renderControls({
             trainSide: line.trainSide,
             moveNumber,

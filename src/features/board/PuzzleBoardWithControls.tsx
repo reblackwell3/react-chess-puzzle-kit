@@ -24,12 +24,14 @@ import {
   DEFAULT_PUZZLE_BOARD_WIDTH,
   puzzleBoardCaptionSlotStyle,
   puzzleBoardColumnStyle,
-  puzzleBoardFeedbackOverlayStyle,
+  puzzleControlsFeedbackStyle,
   puzzleBoardSlotStyle,
   puzzleBoardSlotWrapperStyle,
   puzzleControlsSlotStyle,
   puzzlePlayRowStyle,
+  type PuzzleControlsPlacement,
 } from './puzzleBoardLayout';
+import { useStackPuzzleControlsBelow } from './useStackPuzzleControlsBelow';
 import { PuzzlePosition } from '../position/Position';
 export type { PuzzleMoveRecord } from '../position/moveHistory';
 export type {
@@ -116,7 +118,7 @@ export interface PuzzleBoardWithControlsProps {
   ) => React.ReactNode;
   /** Optional label above the board (e.g. side to move). */
   renderBoardCaption?: (props: BoardCaptionRenderProps) => React.ReactNode;
-  /** Optional result feedback overlaid on the bottom-right of the board. */
+  /** Optional result feedback shown at the bottom of the controls column. */
   renderBoardFeedback?: (props: BoardFeedbackRenderProps) => React.ReactNode;
   /** Pixel width of the live puzzle board (separate from analysis). */
   puzzleBoardWidth?: number;
@@ -155,6 +157,10 @@ export const PuzzleBoardWithControls = ({
   showAnswerArrowOnIncorrect = false,
   answerArrowColor,
 }: PuzzleBoardWithControlsProps) => {
+  const stackControlsBelow = useStackPuzzleControlsBelow();
+  const controlsPlacement: PuzzleControlsPlacement = stackControlsBelow
+    ? 'below'
+    : 'beside';
   const { onFetch, onFetchError, onFeedback } = apiProxy;
 
   const [position, setPosition] = useState<PuzzlePosition | null>(null);
@@ -550,8 +556,10 @@ export const PuzzleBoardWithControls = ({
           )}
         </AnalysisErrorBoundary>
       ) : (
-        <div style={puzzlePlayRowStyle()}>
-          <div style={puzzleBoardColumnStyle(puzzleBoardWidth)}>
+        <div style={puzzlePlayRowStyle(controlsPlacement)}>
+          <div
+            style={puzzleBoardColumnStyle(puzzleBoardWidth, controlsPlacement)}
+          >
             {renderBoardCaption && (
               <div style={puzzleBoardCaptionSlotStyle()}>
                 {renderBoardCaption({
@@ -575,16 +583,9 @@ export const PuzzleBoardWithControls = ({
                   answerArrowColor={answerArrowColor}
                 />
               </div>
-              {renderBoardFeedback &&
-                (resultStatus === 'complete' ||
-                  resultStatus === 'incorrect') && (
-                  <div style={puzzleBoardFeedbackOverlayStyle()}>
-                    {renderBoardFeedback({ resultStatus })}
-                  </div>
-                )}
             </div>
           </div>
-          <div style={puzzleControlsSlotStyle()}>
+          <div style={puzzleControlsSlotStyle(controlsPlacement)}>
             {renderControls(
               handleHintRequest,
               handleShowSolution,
@@ -596,6 +597,13 @@ export const PuzzleBoardWithControls = ({
               },
               controlState,
             )}
+            {renderBoardFeedback &&
+              (resultStatus === 'complete' ||
+                resultStatus === 'incorrect') && (
+                <div style={puzzleControlsFeedbackStyle(controlsPlacement)}>
+                  {renderBoardFeedback({ resultStatus })}
+                </div>
+              )}
           </div>
         </div>
       )}
