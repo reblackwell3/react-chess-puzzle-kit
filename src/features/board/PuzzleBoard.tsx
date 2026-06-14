@@ -8,8 +8,10 @@ export interface PuzzleBoardProps {
   boardWidth: number;
   /** After a wrong guess, play the correct move instead of allowing retries. */
   revealAnswerOnIncorrect?: boolean;
-  /** After a wrong guess, show an arrow to the correct square and allow retries. */
+  /** After a wrong guess, show an arrow to the correct square. */
   showAnswerArrowOnIncorrect?: boolean;
+  /** With {@link showAnswerArrowOnIncorrect}, allow wrong retries after the arrow. When false, only the arrow move is accepted. */
+  allowRetryOnIncorrect?: boolean;
   answerArrowColor?: string;
 }
 
@@ -20,6 +22,7 @@ export const PuzzleBoard = ({
   boardWidth,
   revealAnswerOnIncorrect = false,
   showAnswerArrowOnIncorrect = false,
+  allowRetryOnIncorrect = true,
   answerArrowColor,
 }: PuzzleBoardProps) => (
   <PuzzlePlaySurface
@@ -29,6 +32,7 @@ export const PuzzleBoard = ({
     boardWidth={boardWidth}
     revealAnswerOnIncorrect={revealAnswerOnIncorrect}
     showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
+    allowRetryOnIncorrect={allowRetryOnIncorrect}
     answerArrowColor={answerArrowColor}
   />
 );

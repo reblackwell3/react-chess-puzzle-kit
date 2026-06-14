@@ -22,8 +22,10 @@ export interface PuzzlePlaySurfaceProps {
   onResumeCorrect?: (position: PuzzlePosition) => void;
   /** After a wrong guess, play the correct move instead of allowing retries. */
   revealAnswerOnIncorrect?: boolean;
-  /** After a wrong guess, show an arrow to the correct square and allow retries. */
+  /** After a wrong guess, show an arrow to the correct square. */
   showAnswerArrowOnIncorrect?: boolean;
+  /** With {@link showAnswerArrowOnIncorrect}, allow wrong retries after the arrow. When false, only the arrow move is accepted. */
+  allowRetryOnIncorrect?: boolean;
   answerArrowColor?: string;
 }
 
@@ -39,6 +41,7 @@ export const PuzzlePlaySurface = ({
   onResumeCorrect,
   revealAnswerOnIncorrect = false,
   showAnswerArrowOnIncorrect = false,
+  allowRetryOnIncorrect = true,
   answerArrowColor = DEFAULT_ANSWER_ARROW_COLOR,
 }: PuzzlePlaySurfaceProps) => {
   const [showAnswerArrow, setShowAnswerArrow] = useState(false);
@@ -81,7 +84,18 @@ export const PuzzlePlaySurface = ({
       return false;
     }
 
-    const guess = position.tryGuess(sourceSquare, targetSquare, piece);
+    if (
+      showAnswerArrow &&
+      !allowRetryOnIncorrect &&
+      !position.isExpectedGuess(sourceSquare, targetSquare)
+    ) {
+      position.resetInteractions();
+      return false;
+    }
+
+    const guess = position.tryGuess(sourceSquare, targetSquare, piece, {
+      recordIfIncorrect: !(showAnswerArrow && !allowRetryOnIncorrect),
+    });
     if (!guess.accepted) {
       onFeedback({
         index: position.getIndex(),
@@ -89,7 +103,7 @@ export const PuzzlePlaySurface = ({
         isCorrect: false,
       });
       incInteractionNum();
-      setTimeout(() => {
+      const revealIncorrectFeedback = () => {
         if (showAnswerArrowOnIncorrect) {
           position.resetInteractions();
           setShowAnswerArrow(true);
@@ -100,7 +114,13 @@ export const PuzzlePlaySurface = ({
           position.resetInteractions();
         }
         incInteractionNum();
-      }, 500);
+      };
+
+      if (showAnswerArrowOnIncorrect && !allowRetryOnIncorrect) {
+        revealIncorrectFeedback();
+      } else {
+        setTimeout(revealIncorrectFeedback, 500);
+      }
       return false;
     }
 

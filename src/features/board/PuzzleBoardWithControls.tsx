@@ -63,6 +63,8 @@ export type BoardCaptionRenderProps = {
 
 export type BoardFeedbackRenderProps = {
   resultStatus: Extract<PuzzleResultStatus, 'complete' | 'incorrect'>;
+  /** False when the puzzle was finished after a miss, hint, or solution reveal. */
+  cleanSolve: boolean;
 };
 
 /** Delay before auto-playing the opponent's opening move (ms). */
@@ -133,8 +135,10 @@ export interface PuzzleBoardWithControlsProps {
   autoAdvanceOnCompleteAfterIncorrect?: boolean;
   /** After a wrong guess, play the correct move and wait for the user to advance. */
   revealAnswerOnIncorrect?: boolean;
-  /** After a wrong guess, show an arrow to the correct square and allow retries. */
+  /** After a wrong guess, show an arrow to the correct square. */
   showAnswerArrowOnIncorrect?: boolean;
+  /** With {@link showAnswerArrowOnIncorrect}, allow wrong retries after the arrow. When false, only the arrow move is accepted. */
+  allowRetryOnIncorrect?: boolean;
   answerArrowColor?: string;
 }
 
@@ -155,6 +159,7 @@ export const PuzzleBoardWithControls = ({
   autoAdvanceOnCompleteAfterIncorrect = false,
   revealAnswerOnIncorrect = false,
   showAnswerArrowOnIncorrect = false,
+  allowRetryOnIncorrect = true,
   answerArrowColor,
 }: PuzzleBoardWithControlsProps) => {
   const stackControlsBelow = useStackPuzzleControlsBelow();
@@ -500,7 +505,8 @@ export const PuzzleBoardWithControls = ({
     canShowHint:
       position !== null &&
       !position.isFinished() &&
-      !position.isSolutionRevealed(),
+      !position.isSolutionRevealed() &&
+      !(hasIncorrectAttempt && showAnswerArrowOnIncorrect && !allowRetryOnIncorrect),
     canShowSolution:
       position !== null &&
       (position.isSolutionRevealed() || !position.isFinished()),
@@ -580,6 +586,7 @@ export const PuzzleBoardWithControls = ({
                   onResumeCorrect={runResumeAutoAdvance}
                   revealAnswerOnIncorrect={revealAnswerOnIncorrect}
                   showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
+                  allowRetryOnIncorrect={allowRetryOnIncorrect}
                   answerArrowColor={answerArrowColor}
                 />
               </div>
@@ -601,7 +608,10 @@ export const PuzzleBoardWithControls = ({
               (resultStatus === 'complete' ||
                 resultStatus === 'incorrect') && (
                 <div style={puzzleControlsFeedbackStyle(controlsPlacement)}>
-                  {renderBoardFeedback({ resultStatus })}
+                  {renderBoardFeedback({
+                    resultStatus,
+                    cleanSolve: !hasIncorrectAttempt,
+                  })}
                 </div>
               )}
           </div>

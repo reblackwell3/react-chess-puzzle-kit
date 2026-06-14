@@ -293,10 +293,18 @@ export class PuzzlePosition extends Position {
     return true;
   }
 
+  /** True when dragging from/to matches the expected move at the current index. */
+  isExpectedGuess(sourceSquare: string, targetSquare: string): boolean {
+    const candidates = this.buildCandidateUcis(sourceSquare, targetSquare);
+    const expectedUci = this.moves[this.i];
+    return candidates.some((uci) => uci === expectedUci);
+  }
+
   tryGuess = (
     sourceSquare: string,
     targetSquare: string,
     piece: string,
+    options?: { recordIfIncorrect?: boolean },
   ): { accepted: boolean; finished: boolean } => {
     const candidates = this.buildCandidateUcis(
       sourceSquare,
@@ -329,12 +337,14 @@ export class PuzzlePosition extends Position {
 
     this.isCorrect = false;
     this.guessedMove = `${sourceSquare}${targetSquare}`;
-    this.moveHistory.push({
-      ply: this.moveHistory.length,
-      uci: candidates[candidates.length - 1] ?? this.guessedMove,
-      actor: 'attempt',
-      isCorrect: false,
-    });
+    if (options?.recordIfIncorrect !== false) {
+      this.moveHistory.push({
+        ply: this.moveHistory.length,
+        uci: candidates[candidates.length - 1] ?? this.guessedMove,
+        actor: 'attempt',
+        isCorrect: false,
+      });
+    }
 
     return { accepted: false, finished: false };
   };
