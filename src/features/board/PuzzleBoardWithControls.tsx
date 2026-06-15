@@ -183,11 +183,13 @@ export const PuzzleBoardWithControls = ({
   revealAnswerOnIncorrect = false,
   showAnswerArrowOnIncorrect = false,
   allowRetryOnIncorrect = true,
-  showRefutationOnIncorrect = false,
+  showRefutationOnIncorrect,
   autoShowWrongMoves = true,
   refutationEngine,
   answerArrowColor,
 }: PuzzleBoardWithControlsProps) => {
+  const refutationOnIncorrect =
+    showRefutationOnIncorrect ?? showAnswerArrowOnIncorrect;
   const stackControlsBelow = useStackPuzzleControlsBelow();
   const controlsPlacement: PuzzleControlsPlacement = stackControlsBelow
     ? 'below'
@@ -242,7 +244,7 @@ export const PuzzleBoardWithControls = ({
         if (cancelled) {
           return;
         }
-        if (!data || !data.fen || !data.moves) {
+        if (!data?.fen || !Array.isArray(data.moves) || data.moves.length === 0) {
           console.error('Invalid data fetched:', data);
           setLoadingNextPuzzle(false);
           return;
@@ -594,7 +596,7 @@ export const PuzzleBoardWithControls = ({
                   revealAnswerOnIncorrect={revealAnswerOnIncorrect}
                   showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
                   allowRetryOnIncorrect={allowRetryOnIncorrect}
-                  showRefutationOnIncorrect={showRefutationOnIncorrect}
+                  showRefutationOnIncorrect={refutationOnIncorrect}
                   autoShowWrongMoves={autoShowWrongMoves}
                   refutationEngine={refutationEngine ?? engine}
                   answerArrowColor={answerArrowColor}

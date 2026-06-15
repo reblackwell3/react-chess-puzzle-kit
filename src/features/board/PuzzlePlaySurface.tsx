@@ -128,7 +128,7 @@ export const PuzzlePlaySurface = ({
     useRefutation,
   ]);
 
-  if (position && !positionLocked) {
+  if (position) {
     boardOrientationRef.current = position.getPlayerColor() as 'white' | 'black';
     boardFenRef.current = position.fen();
   }
