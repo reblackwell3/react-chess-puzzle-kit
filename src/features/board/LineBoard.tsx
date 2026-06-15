@@ -1,5 +1,4 @@
-import { ChessboardDnDProvider } from 'react-chessboard';
-import { HighlightChessboard } from 'react-chess-core';
+import { ChessboardDnDProvider, HighlightChessboard } from 'react-chess-core';
 import type { LineTrainSide } from './LineBoardWithControls';
 
 export interface LineBoardProps {

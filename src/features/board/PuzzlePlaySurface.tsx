@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChessboardDnDProvider } from 'react-chessboard';
 import {
+  ChessboardDnDProvider,
   HighlightChessboard,
   useBoardRevision,
   type AnalysisEngineOptions,
