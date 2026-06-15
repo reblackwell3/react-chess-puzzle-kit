@@ -12,7 +12,7 @@ export const PUZZLE_BOARD_CONTROLS_GAP = 16;
 /** Viewports at or below this width stack controls under the board. */
 export const PUZZLE_CONTROLS_STACK_BREAKPOINT_PX = 600;
 
-/** Minimum height reserved above the board so the caption slot does not shift between loads. */
+/** Minimum height reserved below the board so the caption slot does not shift between loads. */
 export const PUZZLE_BOARD_CAPTION_MIN_HEIGHT = 24;
 
 export type PuzzleControlsPlacement = 'beside' | 'below';
@@ -47,7 +47,7 @@ export const puzzleBoardCaptionSlotStyle = (): CSSProperties => ({
   display: 'flex',
   justifyContent: 'center',
   alignItems: 'center',
-  marginBottom: 4,
+  marginTop: 4,
 });
 
 export const puzzleBoardSlotWrapperStyle = (): CSSProperties => ({

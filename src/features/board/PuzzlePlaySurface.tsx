@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChessboardDnDProvider } from 'react-chessboard';
-import { HighlightChessboard } from 'react-chess-core';
+import { HighlightChessboard, useBoardRevision } from 'react-chess-core';
 import { PuzzlePosition } from '../position/Position';
 
 const EMPTY_BOARD_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
@@ -27,11 +27,13 @@ export interface PuzzlePlaySurfaceProps {
   /** With {@link showAnswerArrowOnIncorrect}, allow wrong retries after the arrow. When false, only the arrow move is accepted. */
   allowRetryOnIncorrect?: boolean;
   answerArrowColor?: string;
+  /** While the next card is loading, keep the prior board visible but locked. */
+  positionLocked?: boolean;
 }
 
 /**
- * Single mounted board for puzzle play. Shows an empty board while the next
- * position loads so the layout and controls do not flicker between cards.
+ * Single mounted board for puzzle play. Keeps the prior board (and orientation)
+ * visible while the next position loads so layout and perspective do not flicker.
  */
 export const PuzzlePlaySurface = ({
   position,
@@ -43,12 +45,32 @@ export const PuzzlePlaySurface = ({
   showAnswerArrowOnIncorrect = false,
   allowRetryOnIncorrect = true,
   answerArrowColor = DEFAULT_ANSWER_ARROW_COLOR,
+  positionLocked = false,
 }: PuzzlePlaySurfaceProps) => {
   const [showAnswerArrow, setShowAnswerArrow] = useState(false);
+  const { revision, bumpRevision } = useBoardRevision();
+  const boardOrientationRef = useRef<'white' | 'black'>('white');
+  const boardFenRef = useRef(EMPTY_BOARD_FEN);
+
+  const notifyInteraction = () => {
+    bumpRevision();
+    incInteractionNum();
+  };
 
   useEffect(() => {
     setShowAnswerArrow(false);
   }, [position]);
+
+  if (position) {
+    boardOrientationRef.current = position.getPlayerColor() as 'white' | 'black';
+    boardFenRef.current = position.fen();
+  }
+
+  const boardOrientation = position
+    ? (position.getPlayerColor() as 'white' | 'black')
+    : boardOrientationRef.current;
+  const boardFen = position?.fen() ?? boardFenRef.current;
+  const arePiecesDraggable = position !== null && !positionLocked;
 
   const customArrows = useMemo<[string, string, string][]>(() => {
     if (!showAnswerArrow || !position) {
@@ -72,7 +94,7 @@ export const PuzzlePlaySurface = ({
     targetSquare: string,
     piece: string,
   ) => {
-    if (!position || position.isSolutionRevealed()) {
+    if (!position || positionLocked || position.isSolutionRevealed()) {
       return false;
     }
 
@@ -102,7 +124,7 @@ export const PuzzlePlaySurface = ({
         guess: { sourceSquare, targetSquare, piece },
         isCorrect: false,
       });
-      incInteractionNum();
+      notifyInteraction();
       const revealIncorrectFeedback = () => {
         if (showAnswerArrowOnIncorrect) {
           position.resetInteractions();
@@ -113,7 +135,7 @@ export const PuzzlePlaySurface = ({
         } else {
           position.resetInteractions();
         }
-        incInteractionNum();
+        notifyInteraction();
       };
 
       if (showAnswerArrowOnIncorrect && !allowRetryOnIncorrect) {
@@ -131,19 +153,19 @@ export const PuzzlePlaySurface = ({
       isCorrect: true,
       isFinished: guess.finished,
     });
-    incInteractionNum();
+    notifyInteraction();
     setTimeout(() => {
       position.resetInteractions();
-      incInteractionNum();
+      notifyInteraction();
     }, 500);
 
     if (position.isAlternativeCheckmate()) {
-      incInteractionNum();
+      notifyInteraction();
       return true;
     }
 
     position.next();
-    incInteractionNum();
+    notifyInteraction();
 
     if (position.hasResumeConfig()) {
       onResumeCorrect?.(position);
@@ -154,7 +176,7 @@ export const PuzzlePlaySurface = ({
       if (!position.isFinished()) {
         position.next();
       }
-      incInteractionNum();
+      notifyInteraction();
     }, 500);
 
     return true;
@@ -163,6 +185,7 @@ export const PuzzlePlaySurface = ({
   return (
     <ChessboardDnDProvider>
       <HighlightChessboard
+        key={revision}
         boardWidth={boardWidth}
         checkSquare={position?.getCheckSquare() ?? ''}
         hintSquare={position?.getHintSquare() ?? null}
@@ -173,9 +196,9 @@ export const PuzzlePlaySurface = ({
         }
         customArrows={customArrows}
         onPieceDrop={onPieceDrop}
-        position={position?.fen() ?? EMPTY_BOARD_FEN}
-        boardOrientation={position?.getPlayerColor() ?? 'white'}
-        arePiecesDraggable={position !== null}
+        position={boardFen}
+        boardOrientation={boardOrientation}
+        arePiecesDraggable={arePiecesDraggable}
         areArrowsAllowed={false}
         promotionDialogVariant="modal"
       />

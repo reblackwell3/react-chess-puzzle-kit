@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
-import { ThemeProvider } from 'react-chess-core';
+import { evaluateExpectedMoveDrop, ThemeProvider } from 'react-chess-core';
 import { LineBoard } from './LineBoard';
 import {
   DEFAULT_PUZZLE_BOARD_WIDTH,
@@ -158,7 +158,7 @@ export const LineBoardWithControls = ({
     onCompleteRef.current(perMoveRef.current);
   }, [finished]);
 
-  const handleDrop = (source: string, target: string): boolean => {
+  const handleDrop = (source: string, target: string, piece: string): boolean => {
     if (finished) {
       return false;
     }
@@ -166,20 +166,20 @@ export const LineBoardWithControls = ({
       return false;
     }
     const index = currentIndex;
-    let userUci: string;
-    try {
-      const probe = new Chess(chessRef.current.fen());
-      const move = probe.move({ from: source, to: target, promotion: 'q' });
-      if (!move) {
-        return false;
-      }
-      userUci = `${move.from}${move.to}${move.promotion ?? ''}`;
-    } catch {
+    const expected = line.movesUci[index];
+    const dropResult = evaluateExpectedMoveDrop(
+      chessRef.current.fen(),
+      source,
+      target,
+      piece,
+      expected,
+      true,
+    );
+    if (dropResult.kind === 'illegal' || dropResult.kind === 'ignored') {
       return false;
     }
 
-    const expected = line.movesUci[index];
-    const isCorrect = userUci.toLowerCase() === expected.toLowerCase();
+    const isCorrect = dropResult.kind === 'correct';
     const expectedSan = line.movesSan?.[index] ?? expected;
     perMoveRef.current.push({ index, isCorrect });
     const moveFeedback: LineMoveFeedback = { index, isCorrect, expectedSan };

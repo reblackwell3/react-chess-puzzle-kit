@@ -118,7 +118,7 @@ export interface PuzzleBoardWithControlsProps {
   renderEngineEvaluation?: (
     props: EngineEvaluationRenderProps,
   ) => React.ReactNode;
-  /** Optional label above the board (e.g. side to move). */
+  /** Optional label below the board (e.g. side to move). */
   renderBoardCaption?: (props: BoardCaptionRenderProps) => React.ReactNode;
   /** Optional result feedback shown at the bottom of the controls column. */
   renderBoardFeedback?: (props: BoardFeedbackRenderProps) => React.ReactNode;
@@ -169,6 +169,7 @@ export const PuzzleBoardWithControls = ({
   const { onFetch, onFetchError, onFeedback } = apiProxy;
 
   const [position, setPosition] = useState<PuzzlePosition | null>(null);
+  const [loadingNextPuzzle, setLoadingNextPuzzle] = useState(true);
   const [puzzleNum, setPuzzleNum] = useState(0);
   const [hasIncorrectAttempt, setHasIncorrectAttempt] = useState(false);
   const [puzzleComplete, setPuzzleComplete] = useState(false);
@@ -204,7 +205,7 @@ export const PuzzleBoardWithControls = ({
     let cancelled = false;
     let openingMoveTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
-    setPosition(null);
+    setLoadingNextPuzzle(true);
     setHasIncorrectAttempt(false);
     setPuzzleComplete(false);
     onFetch()
@@ -238,6 +239,11 @@ export const PuzzleBoardWithControls = ({
       .catch((error: unknown) => {
         if (!cancelled) {
           onFetchError?.(error);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingNextPuzzle(false);
         }
       });
 
@@ -566,16 +572,6 @@ export const PuzzleBoardWithControls = ({
           <div
             style={puzzleBoardColumnStyle(puzzleBoardWidth, controlsPlacement)}
           >
-            {renderBoardCaption && (
-              <div style={puzzleBoardCaptionSlotStyle()}>
-                {renderBoardCaption({
-                  sideToMove: position?.getSideToMove() ?? null,
-                  playerColor: position
-                    ? (position.getPlayerColor() as 'white' | 'black')
-                    : null,
-                })}
-              </div>
-            )}
             <div style={puzzleBoardSlotWrapperStyle()}>
               <div style={puzzleBoardSlotStyle()}>
                 <PuzzlePlaySurface
@@ -588,9 +584,20 @@ export const PuzzleBoardWithControls = ({
                   showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
                   allowRetryOnIncorrect={allowRetryOnIncorrect}
                   answerArrowColor={answerArrowColor}
+                  positionLocked={loadingNextPuzzle}
                 />
               </div>
             </div>
+            {renderBoardCaption && (
+              <div style={puzzleBoardCaptionSlotStyle()}>
+                {renderBoardCaption({
+                  sideToMove: position?.getSideToMove() ?? null,
+                  playerColor: position
+                    ? (position.getPlayerColor() as 'white' | 'black')
+                    : null,
+                })}
+              </div>
+            )}
           </div>
           <div style={puzzleControlsSlotStyle(controlsPlacement)}>
             {renderControls(
