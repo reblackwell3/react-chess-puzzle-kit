@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
-import { evaluateExpectedMoveDrop, ThemeProvider } from 'react-chess-core';
+import { evaluateExpectedMoveDrop, ThemeProvider, type BoardThemeId } from 'react-chess-core';
 import { LineBoard } from './LineBoard';
 import {
   DEFAULT_PUZZLE_BOARD_WIDTH,
@@ -48,6 +48,7 @@ export interface LineControlsRenderProps {
 
 export interface LineBoardWithControlsProps {
   theme: 'light' | 'dark';
+  boardTheme?: BoardThemeId;
   line: LineSpec;
   /** Called once when the whole line has been walked. */
   onComplete: (perMove: LineMoveResult[]) => void;
@@ -77,6 +78,7 @@ const boardOrientationForLine = (side: LineTrainSide): 'white' | 'black' =>
  */
 export const LineBoardWithControls = ({
   theme,
+  boardTheme,
   line,
   onComplete,
   onMove,
@@ -198,7 +200,7 @@ export const LineBoardWithControls = ({
     : 'beside';
 
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={theme} boardTheme={boardTheme}>
       <div style={puzzlePlayRowStyle(controlsPlacement)}>
         <div style={puzzleBoardColumnStyle(boardWidth, controlsPlacement)}>
           <div style={puzzleBoardSlotStyle()}>

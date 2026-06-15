@@ -14,6 +14,7 @@ import {
   DEFAULT_ANALYSIS_LAYOUT,
   EngineEvaluationRenderProps,
   ThemeProvider,
+  type BoardThemeId,
 } from 'react-chess-core';
 import {
   defaultRenderControls,
@@ -87,6 +88,7 @@ export type PuzzleFetchResult = {
 
 export interface PuzzleBoardWithControlsProps {
   theme: 'light' | 'dark';
+  boardTheme?: BoardThemeId;
   apiProxy: {
     onFetch: () => Promise<PuzzleFetchResult>;
     /** Called when {@link onFetch} rejects (e.g. network / server down). */
@@ -144,6 +146,7 @@ export interface PuzzleBoardWithControlsProps {
 
 export const PuzzleBoardWithControls = ({
   theme,
+  boardTheme,
   apiProxy,
   renderControls = defaultRenderControls,
   renderAnalysisSidebar,
@@ -528,7 +531,7 @@ export const PuzzleBoardWithControls = ({
   );
 
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={theme} boardTheme={boardTheme}>
       {analysisSnapshot ? (
         <AnalysisErrorBoundary onClose={analysis.closeAnalysis}>
           {useHostAnalysisUi ? (
