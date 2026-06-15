@@ -79,7 +79,12 @@ export const PuzzlePlaySurface = ({
   const boardOrientationRef = useRef<'white' | 'black'>('white');
   const boardFenRef = useRef(EMPTY_BOARD_FEN);
 
-  const notifyInteraction = () => {
+  const notifyHost = () => {
+    incInteractionNum();
+  };
+
+  /** Force a chessboard remount after a rejected drop so pieces snap back. */
+  const snapBoardBack = () => {
     bumpRevision();
     incInteractionNum();
   };
@@ -123,15 +128,14 @@ export const PuzzlePlaySurface = ({
     useRefutation,
   ]);
 
-  if (position) {
+  if (position && !positionLocked) {
     boardOrientationRef.current = position.getPlayerColor() as 'white' | 'black';
     boardFenRef.current = position.fen();
   }
 
-  const boardOrientation = position
-    ? (position.getPlayerColor() as 'white' | 'black')
-    : boardOrientationRef.current;
-  const boardFen = position?.fen() ?? boardFenRef.current;
+  const boardOrientation = boardOrientationRef.current;
+  const boardFen = boardFenRef.current;
+  const hasBoard = boardFen !== EMPTY_BOARD_FEN;
 
   const missPhase = missBoard.missSequence.sequence?.phase;
   const answerArrowVisible = useRefutation
@@ -190,6 +194,7 @@ export const PuzzlePlaySurface = ({
       !position.isExpectedGuess(sourceSquare, targetSquare)
     ) {
       position.resetInteractions();
+      snapBoardBack();
       return false;
     }
 
@@ -202,7 +207,6 @@ export const PuzzlePlaySurface = ({
         guess: { sourceSquare, targetSquare, piece },
         isCorrect: false,
       });
-      notifyInteraction();
 
       if (useRefutation) {
         const setupFen = position.fen();
@@ -217,7 +221,7 @@ export const PuzzlePlaySurface = ({
           missBoard.missSequence.startSequence(setupFen, attemptedUci);
         }
         position.resetInteractions();
-        notifyInteraction();
+        snapBoardBack();
         return false;
       }
 
@@ -231,7 +235,7 @@ export const PuzzlePlaySurface = ({
         } else {
           position.resetInteractions();
         }
-        notifyInteraction();
+        snapBoardBack();
       };
 
       if (showAnswerArrowOnIncorrect && !allowRetryOnIncorrect) {
@@ -251,19 +255,19 @@ export const PuzzlePlaySurface = ({
       isCorrect: true,
       isFinished: guess.finished,
     });
-    notifyInteraction();
+    notifyHost();
     setTimeout(() => {
       position.resetInteractions();
-      notifyInteraction();
+      notifyHost();
     }, 500);
 
     if (position.isAlternativeCheckmate()) {
-      notifyInteraction();
+      notifyHost();
       return true;
     }
 
     position.next();
-    notifyInteraction();
+    notifyHost();
 
     if (position.hasResumeConfig()) {
       onResumeCorrect?.(position);
@@ -274,7 +278,7 @@ export const PuzzlePlaySurface = ({
       if (!position.isFinished()) {
         position.next();
       }
-      notifyInteraction();
+      notifyHost();
     }, 500);
 
     return true;
@@ -282,24 +286,27 @@ export const PuzzlePlaySurface = ({
 
   return (
     <ChessboardDnDProvider>
-      <HighlightChessboard
-        key={revision}
-        boardWidth={boardWidth}
-        checkSquare={position?.getCheckSquare() ?? ''}
-        hintSquare={position?.getHintSquare() ?? null}
-        incorrectMoveSquare={
-          showAnswerArrowOnIncorrect
-            ? null
-            : (position?.getIncorrectMoveSquare() ?? null)
-        }
-        customArrows={customArrows}
-        onPieceDrop={onPieceDrop}
-        position={displayFen}
-        boardOrientation={boardOrientation}
-        arePiecesDraggable={arePiecesDraggable}
-        areArrowsAllowed={false}
-        promotionDialogVariant="modal"
-      />
+      {hasBoard ? (
+        <HighlightChessboard
+          key={revision}
+          boardWidth={boardWidth}
+          checkSquare={position?.getCheckSquare() ?? ''}
+          hintSquare={position?.getHintSquare() ?? null}
+          incorrectMoveSquare={
+            showAnswerArrowOnIncorrect
+              ? null
+              : (position?.getIncorrectMoveSquare() ?? null)
+          }
+          customArrows={customArrows}
+          onPieceDrop={onPieceDrop}
+          position={displayFen}
+          boardOrientation={boardOrientation}
+          arePiecesDraggable={arePiecesDraggable}
+          areArrowsAllowed={false}
+          promotionDialogVariant="modal"
+          animationDuration={0}
+        />
+      ) : null}
     </ChessboardDnDProvider>
   );
 };

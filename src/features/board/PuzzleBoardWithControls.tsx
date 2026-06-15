@@ -72,8 +72,18 @@ export type BoardFeedbackRenderProps = {
   missPhase?: PuzzleMissFeedback['phase'];
 };
 
-/** Delay before auto-playing the opponent's opening move (ms). */
-const OPPONENT_OPENING_MOVE_DELAY_MS = 500;
+/** Apply the opponent setup ply immediately so the board does not flash on load. */
+const puzzlePositionFromFetch = (
+  fen: string,
+  moves: string[],
+  resume?: PuzzleFetchResult['resume'],
+): PuzzlePosition => {
+  const newPosition = new PuzzlePosition(fen, moves, resume);
+  if (!resume && moves.length > 1) {
+    newPosition.next();
+  }
+  return newPosition;
+};
 
 /** Brief pause so the user sees a correct result before the next card loads. */
 const AUTO_ADVANCE_ON_COMPLETE_DELAY_MS = 700;
@@ -222,7 +232,6 @@ export const PuzzleBoardWithControls = ({
 
   useEffect(() => {
     let cancelled = false;
-    let openingMoveTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
     setLoadingNextPuzzle(true);
     setHasIncorrectAttempt(false);
@@ -235,35 +244,20 @@ export const PuzzleBoardWithControls = ({
         }
         if (!data || !data.fen || !data.moves) {
           console.error('Invalid data fetched:', data);
+          setLoadingNextPuzzle(false);
           return;
         }
-        const newPosition = new PuzzlePosition(
-          data.fen,
-          data.moves,
-          data.resume,
-        );
-        setPosition(newPosition);
-        // Multi-move puzzles lead with an opponent setup ply; single-move lines
-        // (e.g. a first-ply opening trainer) are already on the player to move.
-        if (!data.resume && data.moves.length > 1) {
-          openingMoveTimeoutId = setTimeout(() => {
-            if (cancelled) {
-              return;
-            }
-            if (newPosition.next()) {
-              incInteractionNum();
-            }
-          }, OPPONENT_OPENING_MOVE_DELAY_MS);
-        }
+        setPosition(puzzlePositionFromFetch(data.fen, data.moves, data.resume));
+        requestAnimationFrame(() => {
+          if (!cancelled) {
+            setLoadingNextPuzzle(false);
+          }
+        });
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          onFetchError?.(error);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
           setLoadingNextPuzzle(false);
+          onFetchError?.(error);
         }
       });
 
@@ -271,9 +265,6 @@ export const PuzzleBoardWithControls = ({
       cancelled = true;
       clearSolutionAnimation();
       clearResumeAnimation();
-      if (openingMoveTimeoutId !== undefined) {
-        clearTimeout(openingMoveTimeoutId);
-      }
     };
   }, [puzzleNum]);
 
