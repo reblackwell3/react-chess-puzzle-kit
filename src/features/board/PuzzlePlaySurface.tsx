@@ -1,10 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChessboardDnDProvider } from 'react-chessboard';
-import { HighlightChessboard, useBoardRevision } from 'react-chess-core';
+import {
+  HighlightChessboard,
+  useBoardRevision,
+  type AnalysisEngineOptions,
+} from 'react-chess-core';
+import {
+  uciFromDrop,
+  useReplayMissBoard,
+  type MissSequencePhase,
+} from 'react-chess-replay-trainer';
 import { PuzzlePosition } from '../position/Position';
 
 const EMPTY_BOARD_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
 const DEFAULT_ANSWER_ARROW_COLOR = '#42a5f5';
+
+export type PuzzleMissFeedback = {
+  refutationSan: string | null;
+  phase: MissSequencePhase | null;
+};
 
 export interface PuzzlePlaySurfaceProps {
   position: PuzzlePosition | null;
@@ -26,9 +40,17 @@ export interface PuzzlePlaySurfaceProps {
   showAnswerArrowOnIncorrect?: boolean;
   /** With {@link showAnswerArrowOnIncorrect}, allow wrong retries after the arrow. When false, only the arrow move is accepted. */
   allowRetryOnIncorrect?: boolean;
+  /** With {@link showAnswerArrowOnIncorrect}, show wrong move + engine refutation before the answer arrow. */
+  showRefutationOnIncorrect?: boolean;
+  /** When {@link showRefutationOnIncorrect}, show the wrong move on the board before the refutation. */
+  autoShowWrongMoves?: boolean;
+  /** Stockfish options for refutation analysis. */
+  refutationEngine?: AnalysisEngineOptions;
   answerArrowColor?: string;
   /** While the next card is loading, keep the prior board visible but locked. */
   positionLocked?: boolean;
+  /** Fired when refutation miss feedback changes (for host UI). */
+  onMissFeedbackChange?: (feedback: PuzzleMissFeedback | null) => void;
 }
 
 /**
@@ -44,10 +66,15 @@ export const PuzzlePlaySurface = ({
   revealAnswerOnIncorrect = false,
   showAnswerArrowOnIncorrect = false,
   allowRetryOnIncorrect = true,
+  showRefutationOnIncorrect = false,
+  autoShowWrongMoves = true,
+  refutationEngine,
   answerArrowColor = DEFAULT_ANSWER_ARROW_COLOR,
   positionLocked = false,
+  onMissFeedbackChange,
 }: PuzzlePlaySurfaceProps) => {
   const [showAnswerArrow, setShowAnswerArrow] = useState(false);
+  const [incorrectActive, setIncorrectActive] = useState(false);
   const { revision, bumpRevision } = useBoardRevision();
   const boardOrientationRef = useRef<'white' | 'black'>('white');
   const boardFenRef = useRef(EMPTY_BOARD_FEN);
@@ -57,9 +84,44 @@ export const PuzzlePlaySurface = ({
     incInteractionNum();
   };
 
+  const expectedUci = position?.getExpectedMoveUci() ?? null;
+  const positionFen = position?.fen() ?? boardFenRef.current;
+  const useRefutation =
+    showRefutationOnIncorrect && showAnswerArrowOnIncorrect;
+
+  const missBoard = useReplayMissBoard({
+    feedback: useRefutation && incorrectActive ? 'incorrect' : null,
+    expectedUci: expectedUci || null,
+    positionFen,
+    answerArrowColor,
+    autoShowWrongMoves,
+    engineOptions: refutationEngine,
+  });
+
   useEffect(() => {
     setShowAnswerArrow(false);
+    setIncorrectActive(false);
   }, [position]);
+
+  useEffect(() => {
+    if (!onMissFeedbackChange) {
+      return;
+    }
+    if (!useRefutation || !incorrectActive) {
+      onMissFeedbackChange(null);
+      return;
+    }
+    onMissFeedbackChange({
+      refutationSan: missBoard.refutation.refutationSan,
+      phase: missBoard.missSequence.sequence?.phase ?? null,
+    });
+  }, [
+    incorrectActive,
+    missBoard.missSequence.sequence?.phase,
+    missBoard.refutation.refutationSan,
+    onMissFeedbackChange,
+    useRefutation,
+  ]);
 
   if (position) {
     boardOrientationRef.current = position.getPlayerColor() as 'white' | 'black';
@@ -70,24 +132,40 @@ export const PuzzlePlaySurface = ({
     ? (position.getPlayerColor() as 'white' | 'black')
     : boardOrientationRef.current;
   const boardFen = position?.fen() ?? boardFenRef.current;
-  const arePiecesDraggable = position !== null && !positionLocked;
 
-  const customArrows = useMemo<[string, string, string][]>(() => {
-    if (!showAnswerArrow || !position) {
+  const missPhase = missBoard.missSequence.sequence?.phase;
+  const answerArrowVisible = useRefutation
+    ? incorrectActive && missPhase === 'answer'
+    : showAnswerArrow;
+
+  const simpleArrows = useMemo<[string, string, string][]>(() => {
+    if (!showAnswerArrow || !position || useRefutation) {
       return [];
     }
-    const expectedUci = position.getExpectedMoveUci();
-    if (expectedUci.length < 4) {
+    const moveUci = position.getExpectedMoveUci();
+    if (moveUci.length < 4) {
       return [];
     }
-    return [
-      [
-        expectedUci.slice(0, 2),
-        expectedUci.slice(2, 4),
-        answerArrowColor,
-      ],
-    ];
-  }, [showAnswerArrow, position, answerArrowColor]);
+    return [[moveUci.slice(0, 2), moveUci.slice(2, 4), answerArrowColor]];
+  }, [showAnswerArrow, position, answerArrowColor, useRefutation]);
+
+  const customArrows =
+    useRefutation && incorrectActive
+      ? missBoard.customArrows
+      : simpleArrows;
+
+  const displayFen =
+    useRefutation && incorrectActive ? missBoard.boardPosition : boardFen;
+
+  const missLocked =
+    useRefutation &&
+    incorrectActive &&
+    (missBoard.boardAnimating ||
+      missPhase === 'wrong' ||
+      missPhase === 'refutation');
+
+  const arePiecesDraggable =
+    position !== null && !positionLocked && !missLocked;
 
   const onPieceDrop = (
     sourceSquare: string,
@@ -107,7 +185,7 @@ export const PuzzlePlaySurface = ({
     }
 
     if (
-      showAnswerArrow &&
+      answerArrowVisible &&
       !allowRetryOnIncorrect &&
       !position.isExpectedGuess(sourceSquare, targetSquare)
     ) {
@@ -116,7 +194,7 @@ export const PuzzlePlaySurface = ({
     }
 
     const guess = position.tryGuess(sourceSquare, targetSquare, piece, {
-      recordIfIncorrect: !(showAnswerArrow && !allowRetryOnIncorrect),
+      recordIfIncorrect: !(answerArrowVisible && !allowRetryOnIncorrect),
     });
     if (!guess.accepted) {
       onFeedback({
@@ -125,6 +203,24 @@ export const PuzzlePlaySurface = ({
         isCorrect: false,
       });
       notifyInteraction();
+
+      if (useRefutation) {
+        const setupFen = position.fen();
+        const attemptedUci = uciFromDrop(
+          setupFen,
+          sourceSquare,
+          targetSquare,
+          piece,
+        );
+        setIncorrectActive(true);
+        if (attemptedUci) {
+          missBoard.missSequence.startSequence(setupFen, attemptedUci);
+        }
+        position.resetInteractions();
+        notifyInteraction();
+        return false;
+      }
+
       const revealIncorrectFeedback = () => {
         if (showAnswerArrowOnIncorrect) {
           position.resetInteractions();
@@ -147,6 +243,8 @@ export const PuzzlePlaySurface = ({
     }
 
     setShowAnswerArrow(false);
+    setIncorrectActive(false);
+    missBoard.missSequence.clearSequence();
     onFeedback({
       index: position.getIndex(),
       guess: { sourceSquare, targetSquare, piece },
@@ -196,7 +294,7 @@ export const PuzzlePlaySurface = ({
         }
         customArrows={customArrows}
         onPieceDrop={onPieceDrop}
-        position={boardFen}
+        position={displayFen}
         boardOrientation={boardOrientation}
         arePiecesDraggable={arePiecesDraggable}
         areArrowsAllowed={false}

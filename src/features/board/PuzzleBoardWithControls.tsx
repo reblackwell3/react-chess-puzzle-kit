@@ -20,7 +20,7 @@ import {
   defaultRenderControls,
   type PuzzleControlState,
 } from './defaults/DefaultPuzzleControls';
-import { PuzzlePlaySurface } from './PuzzlePlaySurface';
+import { PuzzlePlaySurface, type PuzzleMissFeedback } from './PuzzlePlaySurface';
 import {
   DEFAULT_PUZZLE_BOARD_WIDTH,
   puzzleBoardCaptionSlotStyle,
@@ -66,6 +66,10 @@ export type BoardFeedbackRenderProps = {
   resultStatus: Extract<PuzzleResultStatus, 'complete' | 'incorrect'>;
   /** False when the puzzle was finished after a miss, hint, or solution reveal. */
   cleanSolve: boolean;
+  /** Engine refutation SAN while a miss sequence is active. */
+  refutationSan?: string | null;
+  /** Current miss-sequence phase (wrong → refutation → answer). */
+  missPhase?: PuzzleMissFeedback['phase'];
 };
 
 /** Delay before auto-playing the opponent's opening move (ms). */
@@ -141,6 +145,12 @@ export interface PuzzleBoardWithControlsProps {
   showAnswerArrowOnIncorrect?: boolean;
   /** With {@link showAnswerArrowOnIncorrect}, allow wrong retries after the arrow. When false, only the arrow move is accepted. */
   allowRetryOnIncorrect?: boolean;
+  /** With {@link showAnswerArrowOnIncorrect}, show wrong move + engine refutation before the answer arrow. */
+  showRefutationOnIncorrect?: boolean;
+  /** When {@link showRefutationOnIncorrect}, show the wrong move on the board before the refutation. */
+  autoShowWrongMoves?: boolean;
+  /** Stockfish options for refutation analysis (requires scriptUrl when not using AnalysisEngineProvider). */
+  refutationEngine?: AnalysisEngineOptions;
   answerArrowColor?: string;
 }
 
@@ -163,6 +173,9 @@ export const PuzzleBoardWithControls = ({
   revealAnswerOnIncorrect = false,
   showAnswerArrowOnIncorrect = false,
   allowRetryOnIncorrect = true,
+  showRefutationOnIncorrect = false,
+  autoShowWrongMoves = true,
+  refutationEngine,
   answerArrowColor,
 }: PuzzleBoardWithControlsProps) => {
   const stackControlsBelow = useStackPuzzleControlsBelow();
@@ -176,6 +189,9 @@ export const PuzzleBoardWithControls = ({
   const [puzzleNum, setPuzzleNum] = useState(0);
   const [hasIncorrectAttempt, setHasIncorrectAttempt] = useState(false);
   const [puzzleComplete, setPuzzleComplete] = useState(false);
+  const [missFeedback, setMissFeedback] = useState<PuzzleMissFeedback | null>(
+    null,
+  );
   const [, setInteractionNum] = useState(0);
   const solutionAnimationRef = useRef<{
     cancelled: boolean;
@@ -211,6 +227,7 @@ export const PuzzleBoardWithControls = ({
     setLoadingNextPuzzle(true);
     setHasIncorrectAttempt(false);
     setPuzzleComplete(false);
+    setMissFeedback(null);
     onFetch()
       .then((data) => {
         if (cancelled) {
@@ -586,8 +603,12 @@ export const PuzzleBoardWithControls = ({
                   revealAnswerOnIncorrect={revealAnswerOnIncorrect}
                   showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
                   allowRetryOnIncorrect={allowRetryOnIncorrect}
+                  showRefutationOnIncorrect={showRefutationOnIncorrect}
+                  autoShowWrongMoves={autoShowWrongMoves}
+                  refutationEngine={refutationEngine ?? engine}
                   answerArrowColor={answerArrowColor}
                   positionLocked={loadingNextPuzzle}
+                  onMissFeedbackChange={setMissFeedback}
                 />
               </div>
             </div>
@@ -621,6 +642,8 @@ export const PuzzleBoardWithControls = ({
                   {renderBoardFeedback({
                     resultStatus,
                     cleanSolve: !hasIncorrectAttempt,
+                    refutationSan: missFeedback?.refutationSan,
+                    missPhase: missFeedback?.phase,
                   })}
                 </div>
               )}
