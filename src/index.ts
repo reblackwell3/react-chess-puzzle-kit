@@ -19,7 +19,11 @@ export type {
   PuzzleControlState,
   PuzzleControlsRenderProps,
 } from './features/board/defaults/DefaultPuzzleControls';
-export { DEFAULT_PUZZLE_BOARD_WIDTH } from './features/board/puzzleBoardLayout';
+export {
+  DEFAULT_PUZZLE_BOARD_WIDTH,
+  PUZZLE_CONTROLS_BESIDE_RESERVE_PX,
+  PUZZLE_CONTROLS_STACK_BREAKPOINT_PX,
+} from './features/board/puzzleBoardLayout';
 export * from './features/position/moveHistory';
 export * from './features/position/Position';
 export * from './features/position/Traversable';

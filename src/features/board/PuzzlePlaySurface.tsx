@@ -83,16 +83,23 @@ export const PuzzlePlaySurface = ({
     incInteractionNum();
   };
 
-  /** Force a chessboard remount after a rejected drop so pieces snap back. */
-  const snapBoardBack = () => {
-    bumpRevision();
-    incInteractionNum();
-  };
-
   const expectedUci = position?.getExpectedMoveUci() ?? null;
   const positionFen = position?.fen() ?? boardFenRef.current;
   const useRefutation =
     showRefutationOnIncorrect && showAnswerArrowOnIncorrect;
+
+  /**
+   * Force a chessboard remount after a rejected drop so pieces snap back.
+   * Skip when refutation feedback drives `displayFen` — remounting blinks the
+   * whole board without helping snap-back.
+   */
+  const snapBoardBack = () => {
+    if (useRefutation) {
+      return;
+    }
+    bumpRevision();
+    incInteractionNum();
+  };
 
   const missBoard = useReplayMissBoard({
     feedback: useRefutation && incorrectActive ? 'incorrect' : null,

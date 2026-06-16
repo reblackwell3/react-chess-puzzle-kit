@@ -9,8 +9,12 @@ export const PUZZLE_CONTROLS_COLUMN_WIDTH = 160;
 /** Gap between the board column and controls column. */
 export const PUZZLE_BOARD_CONTROLS_GAP = 16;
 
-/** Viewports at or below this width stack controls under the board. */
-export const PUZZLE_CONTROLS_STACK_BREAKPOINT_PX = 600;
+/** Viewports at or below this width stack controls under the board (through tablet landscape). */
+export const PUZZLE_CONTROLS_STACK_BREAKPOINT_PX = 1365;
+
+/** Horizontal space taken by the controls column when it sits beside the board. */
+export const PUZZLE_CONTROLS_BESIDE_RESERVE_PX =
+  PUZZLE_CONTROLS_COLUMN_WIDTH + PUZZLE_BOARD_CONTROLS_GAP;
 
 /** Minimum height reserved below the board so the caption slot does not shift between loads. */
 export const PUZZLE_BOARD_CAPTION_MIN_HEIGHT = 24;
