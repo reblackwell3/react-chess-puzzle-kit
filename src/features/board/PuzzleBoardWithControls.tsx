@@ -20,7 +20,10 @@ import {
   defaultRenderControls,
   type PuzzleControlState,
 } from './defaults/DefaultPuzzleControls';
-import { PuzzlePlaySurface, type PuzzleMissFeedback } from './PuzzlePlaySurface';
+import {
+  PuzzlePlaySurface,
+  type PuzzleMissFeedback,
+} from './PuzzlePlaySurface';
 import {
   DEFAULT_PUZZLE_BOARD_WIDTH,
   puzzleBoardCaptionSlotStyle,
@@ -60,6 +63,20 @@ export type BoardCaptionRenderProps = {
   sideToMove: 'white' | 'black' | null;
   /** Side the user is solving for; null while loading */
   playerColor: 'white' | 'black' | null;
+  /** True after a wrong guess, hint, or solution reveal on the current card. */
+  incorrectAttempt?: boolean;
+  /** True when the current card is finished. */
+  complete?: boolean;
+  /** False when the card was finished after a miss, hint, or solution reveal. */
+  cleanSolve?: boolean;
+  /** Engine refutation SAN while a miss sequence is active. */
+  refutationSan?: string | null;
+  /** Current miss-sequence phase (wrong → refutation → answer). */
+  missPhase?: PuzzleMissFeedback['phase'];
+  /** True while the board shows the correct-move answer arrow. */
+  answerArrowVisible?: boolean;
+  /** True when the card finished after a wrong move, hint, or solution reveal. */
+  completedAfterMiss?: boolean;
 };
 
 export type BoardFeedbackRenderProps = {
@@ -70,6 +87,10 @@ export type BoardFeedbackRenderProps = {
   refutationSan?: string | null;
   /** Current miss-sequence phase (wrong → refutation → answer). */
   missPhase?: PuzzleMissFeedback['phase'];
+  /** True while the board shows the correct-move answer arrow. */
+  answerArrowVisible?: boolean;
+  /** True when the card finished after a wrong move, hint, or solution reveal. */
+  completedAfterMiss?: boolean;
 };
 
 /** Apply the opponent setup ply immediately so the board does not flash on load. */
@@ -201,6 +222,7 @@ export const PuzzleBoardWithControls = ({
   const [puzzleNum, setPuzzleNum] = useState(0);
   const [hasIncorrectAttempt, setHasIncorrectAttempt] = useState(false);
   const [puzzleComplete, setPuzzleComplete] = useState(false);
+  const [completedAfterMiss, setCompletedAfterMiss] = useState(false);
   const [missFeedback, setMissFeedback] = useState<PuzzleMissFeedback | null>(
     null,
   );
@@ -238,6 +260,7 @@ export const PuzzleBoardWithControls = ({
     setLoadingNextPuzzle(true);
     setHasIncorrectAttempt(false);
     setPuzzleComplete(false);
+    setCompletedAfterMiss(false);
     setMissFeedback(null);
     onFetch()
       .then((data) => {
@@ -278,15 +301,17 @@ export const PuzzleBoardWithControls = ({
     isCorrect?: boolean;
     isFinished?: boolean;
   }) => {
-    if (
+    const incorrectThisFeedback =
       feedbackData.hintRequested ||
       feedbackData.solutionShown ||
-      feedbackData.isCorrect === false
-    ) {
+      feedbackData.isCorrect === false;
+
+    if (incorrectThisFeedback) {
       setHasIncorrectAttempt(true);
     }
     if (feedbackData.isFinished) {
       setPuzzleComplete(true);
+      setCompletedAfterMiss(hasIncorrectAttempt || incorrectThisFeedback);
     }
     onFeedback(feedbackData);
   };
@@ -612,6 +637,13 @@ export const PuzzleBoardWithControls = ({
                   playerColor: position
                     ? (position.getPlayerColor() as 'white' | 'black')
                     : null,
+                  incorrectAttempt: resultStatus === 'incorrect',
+                  complete: resultStatus === 'complete',
+                  cleanSolve: !hasIncorrectAttempt,
+                  refutationSan: missFeedback?.refutationSan ?? null,
+                  missPhase: missFeedback?.phase ?? null,
+                  answerArrowVisible: missFeedback?.answerArrowVisible ?? false,
+                  completedAfterMiss,
                 })}
               </div>
             )}
@@ -628,18 +660,16 @@ export const PuzzleBoardWithControls = ({
               },
               controlState,
             )}
-            {renderBoardFeedback &&
-              (resultStatus === 'complete' ||
-                resultStatus === 'incorrect') && (
-                <div style={puzzleControlsFeedbackStyle(controlsPlacement)}>
-                  {renderBoardFeedback({
-                    resultStatus,
-                    cleanSolve: !hasIncorrectAttempt,
-                    refutationSan: missFeedback?.refutationSan,
-                    missPhase: missFeedback?.phase,
-                  })}
-                </div>
-              )}
+            {renderBoardFeedback && resultStatus === 'complete' && (
+              <div style={puzzleControlsFeedbackStyle(controlsPlacement)}>
+                {renderBoardFeedback({
+                  resultStatus,
+                  cleanSolve: !hasIncorrectAttempt,
+                  refutationSan: missFeedback?.refutationSan,
+                  missPhase: missFeedback?.phase,
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -2,14 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChessboardDnDProvider,
   HighlightChessboard,
-  useBoardRevision,
-  type AnalysisEngineOptions,
-} from 'react-chess-core';
-import {
   uciFromDrop,
-  useReplayMissBoard,
+  useBoardRevision,
+  useMissBoard,
+  type AnalysisEngineOptions,
   type MissSequencePhase,
-} from 'react-chess-replay-trainer';
+} from 'react-chess-core';
 import { PuzzlePosition } from '../position/Position';
 
 const EMPTY_BOARD_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
@@ -18,6 +16,8 @@ const DEFAULT_ANSWER_ARROW_COLOR = '#42a5f5';
 export type PuzzleMissFeedback = {
   refutationSan: string | null;
   phase: MissSequencePhase | null;
+  /** True while the board shows the correct-move answer arrow. */
+  answerArrowVisible: boolean;
 };
 
 export interface PuzzlePlaySurfaceProps {
@@ -101,7 +101,7 @@ export const PuzzlePlaySurface = ({
     incInteractionNum();
   };
 
-  const missBoard = useReplayMissBoard({
+  const missBoard = useMissBoard({
     feedback: useRefutation && incorrectActive ? 'incorrect' : null,
     expectedUci: expectedUci || null,
     positionFen,
@@ -110,28 +110,45 @@ export const PuzzlePlaySurface = ({
     engineOptions: refutationEngine,
   });
 
+  const missPhase = missBoard.missSequence.sequence?.phase;
+  const answerArrowVisible = useRefutation
+    ? incorrectActive && missPhase === 'answer'
+    : showAnswerArrow;
+
   useEffect(() => {
     setShowAnswerArrow(false);
     setIncorrectActive(false);
-  }, [position]);
+    onMissFeedbackChange?.(null);
+  }, [onMissFeedbackChange, position]);
 
   useEffect(() => {
     if (!onMissFeedbackChange) {
       return;
     }
-    if (!useRefutation || !incorrectActive) {
-      onMissFeedbackChange(null);
+    if (useRefutation && incorrectActive) {
+      onMissFeedbackChange({
+        refutationSan: missBoard.refutation.refutationSan,
+        phase: missBoard.missSequence.sequence?.phase ?? null,
+        answerArrowVisible,
+      });
       return;
     }
-    onMissFeedbackChange({
-      refutationSan: missBoard.refutation.refutationSan,
-      phase: missBoard.missSequence.sequence?.phase ?? null,
-    });
+    if (showAnswerArrow) {
+      onMissFeedbackChange({
+        refutationSan: null,
+        phase: null,
+        answerArrowVisible: true,
+      });
+      return;
+    }
+    onMissFeedbackChange(null);
   }, [
+    answerArrowVisible,
     incorrectActive,
     missBoard.missSequence.sequence?.phase,
     missBoard.refutation.refutationSan,
     onMissFeedbackChange,
+    showAnswerArrow,
     useRefutation,
   ]);
 
@@ -143,11 +160,6 @@ export const PuzzlePlaySurface = ({
   const boardOrientation = boardOrientationRef.current;
   const boardFen = boardFenRef.current;
   const hasBoard = boardFen !== EMPTY_BOARD_FEN;
-
-  const missPhase = missBoard.missSequence.sequence?.phase;
-  const answerArrowVisible = useRefutation
-    ? incorrectActive && missPhase === 'answer'
-    : showAnswerArrow;
 
   const simpleArrows = useMemo<[string, string, string][]>(() => {
     if (!showAnswerArrow || !position || useRefutation) {
@@ -256,6 +268,7 @@ export const PuzzlePlaySurface = ({
     setShowAnswerArrow(false);
     setIncorrectActive(false);
     missBoard.missSequence.clearSequence();
+    onMissFeedbackChange?.(null);
     onFeedback({
       index: position.getIndex(),
       guess: { sourceSquare, targetSquare, piece },
