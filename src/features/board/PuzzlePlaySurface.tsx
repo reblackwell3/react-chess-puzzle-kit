@@ -75,6 +75,7 @@ export const PuzzlePlaySurface = ({
 }: PuzzlePlaySurfaceProps) => {
   const [showAnswerArrow, setShowAnswerArrow] = useState(false);
   const [incorrectActive, setIncorrectActive] = useState(false);
+  const attemptMissedRef = useRef(false);
   const { revision, bumpRevision } = useBoardRevision();
   const boardOrientationRef = useRef<'white' | 'black'>('white');
   const boardFenRef = useRef(EMPTY_BOARD_FEN);
@@ -118,6 +119,7 @@ export const PuzzlePlaySurface = ({
   useEffect(() => {
     setShowAnswerArrow(false);
     setIncorrectActive(false);
+    attemptMissedRef.current = false;
     onMissFeedbackChange?.(null);
   }, [onMissFeedbackChange, position]);
 
@@ -221,6 +223,7 @@ export const PuzzlePlaySurface = ({
       recordIfIncorrect: !(answerArrowVisible && !allowRetryOnIncorrect),
     });
     if (!guess.accepted) {
+      attemptMissedRef.current = true;
       onFeedback({
         index: position.getIndex(),
         guess: { sourceSquare, targetSquare, piece },
@@ -269,12 +272,31 @@ export const PuzzlePlaySurface = ({
     setIncorrectActive(false);
     missBoard.missSequence.clearSequence();
     onMissFeedbackChange?.(null);
-    onFeedback({
+
+    const assistedByAnswerArrow =
+      answerArrowVisible && attemptMissedRef.current;
+    const guessPayload = {
       index: position.getIndex(),
       guess: { sourceSquare, targetSquare, piece },
-      isCorrect: true,
-      isFinished: guess.finished,
-    });
+    };
+
+    if (assistedByAnswerArrow) {
+      // Miss feedback for this ply is already saved; dragging along the answer
+      // arrow only continues the line — it must not count as a clean solve.
+      if (guess.finished) {
+        onFeedback({
+          ...guessPayload,
+          isCorrect: false,
+          isFinished: true,
+        });
+      }
+    } else {
+      onFeedback({
+        ...guessPayload,
+        isCorrect: true,
+        isFinished: guess.finished,
+      });
+    }
     notifyHost();
     setTimeout(() => {
       position.resetInteractions();
