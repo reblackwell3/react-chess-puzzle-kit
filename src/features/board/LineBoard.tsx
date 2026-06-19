@@ -6,6 +6,7 @@ export interface LineBoardProps {
   orientation: 'white' | 'black';
   trainSide: LineTrainSide;
   draggable: boolean;
+  correctMoveSquare?: string | null;
   onPieceDrop: (source: string, target: string, piece: string) => boolean;
   boardWidth: number;
 }
@@ -20,6 +21,7 @@ export const LineBoard = ({
   orientation,
   trainSide,
   draggable,
+  correctMoveSquare = null,
   onPieceDrop,
   boardWidth,
 }: LineBoardProps) => (
@@ -29,6 +31,7 @@ export const LineBoard = ({
       checkSquare=""
       hintSquare={null}
       incorrectMoveSquare={null}
+      correctMoveSquare={correctMoveSquare}
       position={fen}
       boardOrientation={orientation}
       arePiecesDraggable={draggable}

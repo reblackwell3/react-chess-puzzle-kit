@@ -77,6 +77,8 @@ export type BoardCaptionRenderProps = {
   answerArrowVisible?: boolean;
   /** True when the card finished after a wrong move, hint, or solution reveal. */
   completedAfterMiss?: boolean;
+  /** True when the user requested a hint on the current card. */
+  hintUsed?: boolean;
 };
 
 export type BoardFeedbackRenderProps = {
@@ -91,6 +93,8 @@ export type BoardFeedbackRenderProps = {
   answerArrowVisible?: boolean;
   /** True when the card finished after a wrong move, hint, or solution reveal. */
   completedAfterMiss?: boolean;
+  /** True when the user requested a hint on the current card. */
+  hintUsed?: boolean;
 };
 
 /** Apply the opponent setup ply immediately so the board does not flash on load. */
@@ -163,6 +167,8 @@ export interface PuzzleBoardWithControlsProps {
   puzzleBoardWidth?: number;
   /** Board + sidebar grid sizes when analysis is open. */
   analysisLayout?: AnalysisLayoutConfig;
+  /** Chessboard pixel width in analysis (defaults to {@link analysisLayout}.boardWidth). */
+  analysisBoardWidth?: number;
   /** Custom board/sidebar placement (overrides {@link analysisLayout} grid). */
   renderAnalysisMain?: (props: AnalysisMainRenderProps) => React.ReactNode;
   engine?: AnalysisEngineOptions;
@@ -197,6 +203,7 @@ export const PuzzleBoardWithControls = ({
   renderBoardFeedback,
   puzzleBoardWidth = DEFAULT_PUZZLE_BOARD_WIDTH,
   analysisLayout = DEFAULT_ANALYSIS_LAYOUT,
+  analysisBoardWidth,
   renderAnalysisMain,
   engine,
   autoAdvanceOnComplete = false,
@@ -221,6 +228,7 @@ export const PuzzleBoardWithControls = ({
   const [loadingNextPuzzle, setLoadingNextPuzzle] = useState(true);
   const [puzzleNum, setPuzzleNum] = useState(0);
   const [hasIncorrectAttempt, setHasIncorrectAttempt] = useState(false);
+  const [hintUsed, setHintUsed] = useState(false);
   const [puzzleComplete, setPuzzleComplete] = useState(false);
   const [completedAfterMiss, setCompletedAfterMiss] = useState(false);
   const [missFeedback, setMissFeedback] = useState<PuzzleMissFeedback | null>(
@@ -259,6 +267,7 @@ export const PuzzleBoardWithControls = ({
 
     setLoadingNextPuzzle(true);
     setHasIncorrectAttempt(false);
+    setHintUsed(false);
     setPuzzleComplete(false);
     setCompletedAfterMiss(false);
     setMissFeedback(null);
@@ -306,12 +315,21 @@ export const PuzzleBoardWithControls = ({
       feedbackData.solutionShown ||
       feedbackData.isCorrect === false;
 
+    if (feedbackData.hintRequested) {
+      setHintUsed(true);
+    }
     if (incorrectThisFeedback) {
       setHasIncorrectAttempt(true);
     }
     if (feedbackData.isFinished) {
       setPuzzleComplete(true);
-      setCompletedAfterMiss(hasIncorrectAttempt || incorrectThisFeedback);
+      setCompletedAfterMiss(
+        (prev) =>
+          prev ||
+          hasIncorrectAttempt ||
+          incorrectThisFeedback ||
+          feedbackData.hintRequested === true,
+      );
     }
     onFeedback(feedbackData);
   };
@@ -558,6 +576,8 @@ export const PuzzleBoardWithControls = ({
   const analysis = usePuzzleAnalysis(position, resultStatus, puzzleNum);
   const analysisSnapshot =
     analysis.isOpen && analysis.snapshot ? analysis.snapshot : null;
+  const resolvedAnalysisBoardWidth =
+    analysisBoardWidth ?? analysisLayout.boardWidth;
 
   const useHostAnalysisUi = Boolean(
     renderAnalysisSidebar &&
@@ -574,7 +594,7 @@ export const PuzzleBoardWithControls = ({
               analysisContext={analysisSnapshot}
               onClose={analysis.closeAnalysis}
               theme={theme}
-              boardWidth={analysisLayout.boardWidth}
+              boardWidth={resolvedAnalysisBoardWidth}
               engine={engine}
               renderMain={
                 renderAnalysisMain ??
@@ -644,6 +664,7 @@ export const PuzzleBoardWithControls = ({
                   missPhase: missFeedback?.phase ?? null,
                   answerArrowVisible: missFeedback?.answerArrowVisible ?? false,
                   completedAfterMiss,
+                  hintUsed,
                 })}
               </div>
             )}
@@ -667,6 +688,7 @@ export const PuzzleBoardWithControls = ({
                   cleanSolve: !hasIncorrectAttempt,
                   refutationSan: missFeedback?.refutationSan,
                   missPhase: missFeedback?.phase,
+                  hintUsed,
                 })}
               </div>
             )}

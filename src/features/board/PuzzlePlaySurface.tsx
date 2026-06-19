@@ -4,6 +4,7 @@ import {
   HighlightChessboard,
   uciFromDrop,
   useBoardRevision,
+  useCorrectMoveFeedback,
   useMissBoard,
   type AnalysisEngineOptions,
   type MissSequencePhase,
@@ -77,6 +78,11 @@ export const PuzzlePlaySurface = ({
   const [incorrectActive, setIncorrectActive] = useState(false);
   const attemptMissedRef = useRef(false);
   const { revision, bumpRevision } = useBoardRevision();
+  const {
+    correctMoveSquare,
+    showCorrectMove,
+    clearCorrectMoveFeedback,
+  } = useCorrectMoveFeedback();
   const boardOrientationRef = useRef<'white' | 'black'>('white');
   const boardFenRef = useRef(EMPTY_BOARD_FEN);
 
@@ -107,7 +113,9 @@ export const PuzzlePlaySurface = ({
     expectedUci: expectedUci || null,
     positionFen,
     answerArrowColor,
-    autoShowWrongMoves,
+    // Refutation + answer-arrow flows must run the full wrong→refutation→answer
+    // sequence; the replay "retry without arrow" setting does not apply here.
+    autoShowWrongMoves: useRefutation ? true : autoShowWrongMoves,
     engineOptions: refutationEngine,
   });
 
@@ -120,8 +128,9 @@ export const PuzzlePlaySurface = ({
     setShowAnswerArrow(false);
     setIncorrectActive(false);
     attemptMissedRef.current = false;
+    clearCorrectMoveFeedback();
     onMissFeedbackChange?.(null);
-  }, [onMissFeedbackChange, position]);
+  }, [clearCorrectMoveFeedback, onMissFeedbackChange, position]);
 
   useEffect(() => {
     if (!onMissFeedbackChange) {
@@ -190,7 +199,10 @@ export const PuzzlePlaySurface = ({
       missPhase === 'refutation');
 
   const arePiecesDraggable =
-    position !== null && !positionLocked && !missLocked;
+    position !== null &&
+    !positionLocked &&
+    !missLocked &&
+    correctMoveSquare === null;
 
   const onPieceDrop = (
     sourceSquare: string,
@@ -272,6 +284,7 @@ export const PuzzlePlaySurface = ({
     setIncorrectActive(false);
     missBoard.missSequence.clearSequence();
     onMissFeedbackChange?.(null);
+    clearCorrectMoveFeedback();
 
     const assistedByAnswerArrow =
       answerArrowVisible && attemptMissedRef.current;
@@ -297,31 +310,32 @@ export const PuzzlePlaySurface = ({
         isFinished: guess.finished,
       });
     }
-    notifyHost();
-    setTimeout(() => {
-      position.resetInteractions();
-      notifyHost();
-    }, 500);
-
-    if (position.isAlternativeCheckmate()) {
-      notifyHost();
-      return true;
-    }
 
     position.next();
+    boardFenRef.current = position.fen();
     notifyHost();
 
-    if (position.hasResumeConfig()) {
-      onResumeCorrect?.(position);
-      return true;
-    }
+    const finishCorrectFeedback = () => {
+      position.resetInteractions();
+      notifyHost();
 
-    setTimeout(() => {
+      if (position.isAlternativeCheckmate()) {
+        return;
+      }
+
+      if (position.hasResumeConfig()) {
+        onResumeCorrect?.(position);
+        return;
+      }
+
       if (!position.isFinished()) {
         position.next();
+        boardFenRef.current = position.fen();
       }
       notifyHost();
-    }, 500);
+    };
+
+    showCorrectMove(targetSquare, finishCorrectFeedback);
 
     return true;
   };
@@ -339,6 +353,7 @@ export const PuzzlePlaySurface = ({
               ? null
               : (position?.getIncorrectMoveSquare() ?? null)
           }
+          correctMoveSquare={correctMoveSquare}
           customArrows={customArrows}
           onPieceDrop={onPieceDrop}
           position={displayFen}

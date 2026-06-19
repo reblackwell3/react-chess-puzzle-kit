@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
-import { evaluateExpectedMoveDrop, ThemeProvider, type BoardThemeId } from 'react-chess-core';
+import { evaluateExpectedMoveDrop, fenAfterUci, ThemeProvider, useCorrectMoveFeedback, type BoardThemeId } from 'react-chess-core';
 import { LineBoard } from './LineBoard';
 import {
   DEFAULT_PUZZLE_BOARD_WIDTH,
@@ -98,6 +98,13 @@ export const LineBoardWithControls = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [finished, setFinished] = useState(false);
   const [feedback, setFeedback] = useState<LineMoveFeedback | null>(null);
+  const [displayFen, setDisplayFen] = useState<string | null>(null);
+  const {
+    correctMoveSquare,
+    showCorrectMove,
+    clearCorrectMoveFeedback,
+    isShowingCorrectMove,
+  } = useCorrectMoveFeedback();
 
   const total = line.movesUci.length;
   const orientation = boardOrientationForLine(line.trainSide);
@@ -127,7 +134,7 @@ export const LineBoardWithControls = ({
 
   // Auto-play opponent moves and detect the end of the line.
   useEffect(() => {
-    if (finished) {
+    if (finished || isShowingCorrectMove) {
       return;
     }
     if (currentIndex >= total) {
@@ -149,6 +156,7 @@ export const LineBoardWithControls = ({
     line.trainSide,
     applyMove,
     opponentMoveDelayMs,
+    isShowingCorrectMove,
   ]);
 
   // Emit the completion event exactly once.
@@ -161,16 +169,17 @@ export const LineBoardWithControls = ({
   }, [finished]);
 
   const handleDrop = (source: string, target: string, piece: string): boolean => {
-    if (finished) {
+    if (finished || isShowingCorrectMove) {
       return false;
     }
-    if (turnFromFen(chessRef.current.fen()) !== line.trainSide) {
+    const setupFen = displayFen ?? chessRef.current.fen();
+    if (turnFromFen(setupFen) !== line.trainSide) {
       return false;
     }
     const index = currentIndex;
     const expected = line.movesUci[index];
     const dropResult = evaluateExpectedMoveDrop(
-      chessRef.current.fen(),
+      setupFen,
       source,
       target,
       piece,
@@ -187,13 +196,28 @@ export const LineBoardWithControls = ({
     const moveFeedback: LineMoveFeedback = { index, isCorrect, expectedSan };
     setFeedback(moveFeedback);
     onMoveRef.current?.(moveFeedback);
-    applyMove(index);
+    if (isCorrect) {
+      const nextFen = fenAfterUci(setupFen, dropResult.uci);
+      if (nextFen) {
+        setDisplayFen(nextFen);
+      }
+      showCorrectMove(target, () => {
+        setDisplayFen(null);
+        setFeedback(null);
+        clearCorrectMoveFeedback();
+        applyMove(index);
+      });
+    }
     return isCorrect;
   };
 
+  const boardFen = displayFen ?? fen;
   const moveNumber = Math.min(currentIndex + 1, total);
   const isUserTurn =
-    !finished && turnFromFen(fen) === line.trainSide && currentIndex < total;
+    !finished &&
+    !isShowingCorrectMove &&
+    turnFromFen(boardFen) === line.trainSide &&
+    currentIndex < total;
   const stackControlsBelow = useStackPuzzleControlsBelow();
   const controlsPlacement: PuzzleControlsPlacement = stackControlsBelow
     ? 'below'
@@ -205,10 +229,11 @@ export const LineBoardWithControls = ({
         <div style={puzzleBoardColumnStyle(boardWidth, controlsPlacement)}>
           <div style={puzzleBoardSlotStyle()}>
             <LineBoard
-              fen={fen}
+              fen={boardFen}
               orientation={orientation}
               trainSide={line.trainSide}
               draggable={isUserTurn}
+              correctMoveSquare={correctMoveSquare}
               onPieceDrop={handleDrop}
               boardWidth={boardWidth}
             />
