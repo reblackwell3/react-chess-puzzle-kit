@@ -7,6 +7,7 @@ export interface LineBoardProps {
   trainSide: LineTrainSide;
   draggable: boolean;
   correctMoveSquare?: string | null;
+  lastMoveUci?: string | null;
   onPieceDrop: (source: string, target: string, piece: string) => boolean;
   boardWidth: number;
 }
@@ -22,6 +23,7 @@ export const LineBoard = ({
   trainSide,
   draggable,
   correctMoveSquare = null,
+  lastMoveUci = null,
   onPieceDrop,
   boardWidth,
 }: LineBoardProps) => (
@@ -39,6 +41,7 @@ export const LineBoard = ({
       onPieceDrop={(source: string, target: string, piece: string) =>
         onPieceDrop(source, target, piece)
       }
+      lastMoveUci={lastMoveUci}
       autoPromoteToQueen
       areArrowsAllowed={false}
       customBoardStyle={{ borderRadius: 4 }}

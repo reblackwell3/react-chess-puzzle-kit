@@ -1,6 +1,13 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
-import { evaluateExpectedMoveDrop, fenAfterUci, ThemeProvider, useCorrectMoveFeedback, type BoardThemeId } from 'react-chess-core';
+import {
+  evaluateExpectedMoveDrop,
+  fenAfterUci,
+  lastMoveUciAtPly,
+  ThemeProvider,
+  useCorrectMoveFeedback,
+  type BoardThemeId,
+} from 'react-chess-core';
 import { LineBoard } from './LineBoard';
 import {
   DEFAULT_PUZZLE_BOARD_WIDTH,
@@ -212,6 +219,12 @@ export const LineBoardWithControls = ({
   };
 
   const boardFen = displayFen ?? fen;
+  const lastMoveUci = useMemo(() => {
+    if (displayFen) {
+      return line.movesUci[currentIndex] ?? null;
+    }
+    return lastMoveUciAtPly(line.movesUci, currentIndex);
+  }, [currentIndex, displayFen, line.movesUci]);
   const moveNumber = Math.min(currentIndex + 1, total);
   const isUserTurn =
     !finished &&
@@ -234,6 +247,7 @@ export const LineBoardWithControls = ({
               trainSide={line.trainSide}
               draggable={isUserTurn}
               correctMoveSquare={correctMoveSquare}
+              lastMoveUci={lastMoveUci}
               onPieceDrop={handleDrop}
               boardWidth={boardWidth}
             />
