@@ -130,9 +130,10 @@ export const PuzzlePlaySurface = ({
     : showAnswerArrow;
 
   const overlayIncorrectSquare =
-    useRefutation && incorrectActive
+    transientIncorrectSquare ??
+    (useRefutation && incorrectActive
       ? missBoard.missSequence.display.incorrectMoveSquare
-      : transientIncorrectSquare;
+      : null);
   const refutationMoveSquare =
     useRefutation && incorrectActive
       ? missBoard.missSequence.display.refutationMoveSquare
@@ -258,9 +259,7 @@ export const PuzzlePlaySurface = ({
     });
     if (!guess.accepted) {
       attemptMissedRef.current = true;
-      if (!useRefutation) {
-        showIncorrectMove(sourceSquare);
-      }
+      showIncorrectMove(useRefutation ? targetSquare : sourceSquare);
       onFeedback({
         index: position.getIndex(),
         guess: { sourceSquare, targetSquare, piece },
