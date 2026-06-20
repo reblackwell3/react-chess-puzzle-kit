@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ChessboardDnDProvider,
   HighlightChessboard,
   uciFromDrop,
   useBoardRevision,
@@ -85,7 +84,7 @@ export const PuzzlePlaySurface = ({
     clearCorrectMoveFeedback,
   } = useCorrectMoveFeedback();
   const {
-    incorrectMoveSquare,
+    incorrectMoveSquare: transientIncorrectSquare,
     showIncorrectMove,
     clearIncorrectMoveFeedback,
   } = useIncorrectMoveFeedback();
@@ -129,6 +128,15 @@ export const PuzzlePlaySurface = ({
   const answerArrowVisible = useRefutation
     ? incorrectActive && missPhase === 'answer'
     : showAnswerArrow;
+
+  const overlayIncorrectSquare =
+    useRefutation && incorrectActive
+      ? missBoard.missSequence.display.incorrectMoveSquare
+      : transientIncorrectSquare;
+  const refutationMoveSquare =
+    useRefutation && incorrectActive
+      ? missBoard.missSequence.display.refutationMoveSquare
+      : null;
 
   useEffect(() => {
     setShowAnswerArrow(false);
@@ -215,7 +223,7 @@ export const PuzzlePlaySurface = ({
     !positionLocked &&
     !missLocked &&
     correctMoveSquare === null &&
-    incorrectMoveSquare === null;
+    overlayIncorrectSquare === null;
 
   const onPieceDrop = (
     sourceSquare: string,
@@ -250,7 +258,9 @@ export const PuzzlePlaySurface = ({
     });
     if (!guess.accepted) {
       attemptMissedRef.current = true;
-      showIncorrectMove(sourceSquare);
+      if (!useRefutation) {
+        showIncorrectMove(sourceSquare);
+      }
       onFeedback({
         index: position.getIndex(),
         guess: { sourceSquare, targetSquare, piece },
@@ -270,8 +280,7 @@ export const PuzzlePlaySurface = ({
           missBoard.missSequence.startSequence(setupFen, attemptedUci);
         }
         position.resetInteractions();
-        snapBoardBack();
-        return false;
+        return true;
       }
 
       const revealIncorrectFeedback = () => {
@@ -355,26 +364,23 @@ export const PuzzlePlaySurface = ({
     return true;
   };
 
-  return (
-    <ChessboardDnDProvider>
-      {hasBoard ? (
-        <HighlightChessboard
-          key={revision}
-          boardWidth={boardWidth}
-          checkSquare={position?.getCheckSquare() ?? ''}
-          hintSquare={position?.getHintSquare() ?? null}
-          incorrectMoveSquare={incorrectMoveSquare}
-          correctMoveSquare={correctMoveSquare}
-          customArrows={customArrows}
-          onPieceDrop={onPieceDrop}
-          position={displayFen}
-          boardOrientation={boardOrientation}
-          arePiecesDraggable={arePiecesDraggable}
-          areArrowsAllowed={false}
-          promotionDialogVariant="modal"
-          animationDuration={0}
-        />
-      ) : null}
-    </ChessboardDnDProvider>
-  );
+  return hasBoard ? (
+    <HighlightChessboard
+      key={revision}
+      boardWidth={boardWidth}
+      checkSquare={position?.getCheckSquare() ?? ''}
+      hintSquare={position?.getHintSquare() ?? null}
+      incorrectMoveSquare={overlayIncorrectSquare}
+      refutationMoveSquare={refutationMoveSquare}
+      correctMoveSquare={correctMoveSquare}
+      customArrows={customArrows}
+      onPieceDrop={onPieceDrop}
+      position={displayFen}
+      boardOrientation={boardOrientation}
+      arePiecesDraggable={arePiecesDraggable}
+      areArrowsAllowed={false}
+      promotionDialogVariant="modal"
+      animationDuration={0}
+    />
+  ) : null;
 };

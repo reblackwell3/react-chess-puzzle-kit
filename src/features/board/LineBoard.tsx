@@ -1,4 +1,4 @@
-import { ChessboardDnDProvider, HighlightChessboard } from 'react-chess-core';
+import { HighlightChessboard } from 'react-chess-core';
 import type { LineTrainSide } from './LineBoardWithControls';
 
 export interface LineBoardProps {
@@ -29,24 +29,22 @@ export const LineBoard = ({
   onPieceDrop,
   boardWidth,
 }: LineBoardProps) => (
-  <ChessboardDnDProvider>
-    <HighlightChessboard
-      boardWidth={boardWidth}
-      checkSquare=""
-      hintSquare={null}
-      incorrectMoveSquare={incorrectMoveSquare}
-      correctMoveSquare={correctMoveSquare}
-      position={fen}
-      boardOrientation={orientation}
-      arePiecesDraggable={draggable}
-      isDraggablePiece={({ piece }: { piece: string }) => piece[0] === trainSide}
-      onPieceDrop={(source: string, target: string, piece: string) =>
-        onPieceDrop(source, target, piece)
-      }
-      lastMoveUci={lastMoveUci}
-      autoPromoteToQueen
-      areArrowsAllowed={false}
-      customBoardStyle={{ borderRadius: 4 }}
-    />
-  </ChessboardDnDProvider>
+  <HighlightChessboard
+    boardWidth={boardWidth}
+    checkSquare=""
+    hintSquare={null}
+    incorrectMoveSquare={incorrectMoveSquare}
+    correctMoveSquare={correctMoveSquare}
+    position={fen}
+    boardOrientation={orientation}
+    arePiecesDraggable={draggable}
+    isDraggablePiece={({ piece }: { piece: string }) => piece[0] === trainSide}
+    onPieceDrop={(source: string, target: string, piece: string) =>
+      onPieceDrop(source, target, piece)
+    }
+    lastMoveUci={lastMoveUci}
+    autoPromoteToQueen
+    areArrowsAllowed={false}
+    customBoardStyle={{ borderRadius: 4 }}
+  />
 );

@@ -116,7 +116,6 @@ export const LineBoardWithControls = ({
   const {
     incorrectMoveSquare,
     showIncorrectMove,
-    clearCorrectMoveFeedback: clearIncorrectMoveFeedback,
     isShowingIncorrectMove,
   } = useIncorrectMoveFeedback();
 
@@ -212,7 +211,7 @@ export const LineBoardWithControls = ({
     setFeedback(moveFeedback);
     onMoveRef.current?.(moveFeedback);
     if (isCorrect) {
-      const nextFen = fenAfterUci(setupFen, dropResult.uci);
+      const nextFen = fenAfterUci(setupFen, dropResult.attempt.uci);
       if (nextFen) {
         setDisplayFen(nextFen);
       }
