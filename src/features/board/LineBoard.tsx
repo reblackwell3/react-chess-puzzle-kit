@@ -7,6 +7,7 @@ export interface LineBoardProps {
   trainSide: LineTrainSide;
   draggable: boolean;
   correctMoveSquare?: string | null;
+  incorrectMoveSquare?: string | null;
   lastMoveUci?: string | null;
   onPieceDrop: (source: string, target: string, piece: string) => boolean;
   boardWidth: number;
@@ -23,6 +24,7 @@ export const LineBoard = ({
   trainSide,
   draggable,
   correctMoveSquare = null,
+  incorrectMoveSquare = null,
   lastMoveUci = null,
   onPieceDrop,
   boardWidth,
@@ -32,7 +34,7 @@ export const LineBoard = ({
       boardWidth={boardWidth}
       checkSquare=""
       hintSquare={null}
-      incorrectMoveSquare={null}
+      incorrectMoveSquare={incorrectMoveSquare}
       correctMoveSquare={correctMoveSquare}
       position={fen}
       boardOrientation={orientation}

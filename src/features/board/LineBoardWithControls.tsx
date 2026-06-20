@@ -6,6 +6,7 @@ import {
   lastMoveUciAtPly,
   ThemeProvider,
   useCorrectMoveFeedback,
+  useIncorrectMoveFeedback,
   type BoardThemeId,
 } from 'react-chess-core';
 import { LineBoard } from './LineBoard';
@@ -112,6 +113,12 @@ export const LineBoardWithControls = ({
     clearCorrectMoveFeedback,
     isShowingCorrectMove,
   } = useCorrectMoveFeedback();
+  const {
+    incorrectMoveSquare,
+    showIncorrectMove,
+    clearCorrectMoveFeedback: clearIncorrectMoveFeedback,
+    isShowingIncorrectMove,
+  } = useIncorrectMoveFeedback();
 
   const total = line.movesUci.length;
   const orientation = boardOrientationForLine(line.trainSide);
@@ -141,7 +148,7 @@ export const LineBoardWithControls = ({
 
   // Auto-play opponent moves and detect the end of the line.
   useEffect(() => {
-    if (finished || isShowingCorrectMove) {
+    if (finished || isShowingCorrectMove || isShowingIncorrectMove) {
       return;
     }
     if (currentIndex >= total) {
@@ -164,6 +171,7 @@ export const LineBoardWithControls = ({
     applyMove,
     opponentMoveDelayMs,
     isShowingCorrectMove,
+    isShowingIncorrectMove,
   ]);
 
   // Emit the completion event exactly once.
@@ -176,7 +184,7 @@ export const LineBoardWithControls = ({
   }, [finished]);
 
   const handleDrop = (source: string, target: string, piece: string): boolean => {
-    if (finished || isShowingCorrectMove) {
+    if (finished || isShowingCorrectMove || isShowingIncorrectMove) {
       return false;
     }
     const setupFen = displayFen ?? chessRef.current.fen();
@@ -214,6 +222,8 @@ export const LineBoardWithControls = ({
         clearCorrectMoveFeedback();
         applyMove(index);
       });
+    } else {
+      showIncorrectMove(source);
     }
     return isCorrect;
   };
@@ -229,6 +239,7 @@ export const LineBoardWithControls = ({
   const isUserTurn =
     !finished &&
     !isShowingCorrectMove &&
+    !isShowingIncorrectMove &&
     turnFromFen(boardFen) === line.trainSide &&
     currentIndex < total;
   const stackControlsBelow = useStackPuzzleControlsBelow();
@@ -247,6 +258,7 @@ export const LineBoardWithControls = ({
               trainSide={line.trainSide}
               draggable={isUserTurn}
               correctMoveSquare={correctMoveSquare}
+              incorrectMoveSquare={incorrectMoveSquare}
               lastMoveUci={lastMoveUci}
               onPieceDrop={handleDrop}
               boardWidth={boardWidth}

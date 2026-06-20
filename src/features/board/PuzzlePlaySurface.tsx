@@ -5,14 +5,15 @@ import {
   uciFromDrop,
   useBoardRevision,
   useCorrectMoveFeedback,
+  useIncorrectMoveFeedback,
   useMissBoard,
+  DEFAULT_ANSWER_ARROW_COLOR,
   type AnalysisEngineOptions,
   type MissSequencePhase,
 } from 'react-chess-core';
 import { PuzzlePosition } from '../position/Position';
 
 const EMPTY_BOARD_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
-const DEFAULT_ANSWER_ARROW_COLOR = '#42a5f5';
 
 export type PuzzleMissFeedback = {
   refutationSan: string | null;
@@ -83,6 +84,11 @@ export const PuzzlePlaySurface = ({
     showCorrectMove,
     clearCorrectMoveFeedback,
   } = useCorrectMoveFeedback();
+  const {
+    incorrectMoveSquare,
+    showIncorrectMove,
+    clearIncorrectMoveFeedback,
+  } = useIncorrectMoveFeedback();
   const boardOrientationRef = useRef<'white' | 'black'>('white');
   const boardFenRef = useRef(EMPTY_BOARD_FEN);
 
@@ -129,8 +135,14 @@ export const PuzzlePlaySurface = ({
     setIncorrectActive(false);
     attemptMissedRef.current = false;
     clearCorrectMoveFeedback();
+    clearIncorrectMoveFeedback();
     onMissFeedbackChange?.(null);
-  }, [clearCorrectMoveFeedback, onMissFeedbackChange, position]);
+  }, [
+    clearCorrectMoveFeedback,
+    clearIncorrectMoveFeedback,
+    onMissFeedbackChange,
+    position,
+  ]);
 
   useEffect(() => {
     if (!onMissFeedbackChange) {
@@ -202,7 +214,8 @@ export const PuzzlePlaySurface = ({
     position !== null &&
     !positionLocked &&
     !missLocked &&
-    correctMoveSquare === null;
+    correctMoveSquare === null &&
+    incorrectMoveSquare === null;
 
   const onPieceDrop = (
     sourceSquare: string,
@@ -226,6 +239,7 @@ export const PuzzlePlaySurface = ({
       !allowRetryOnIncorrect &&
       !position.isExpectedGuess(sourceSquare, targetSquare)
     ) {
+      showIncorrectMove(sourceSquare);
       position.resetInteractions();
       snapBoardBack();
       return false;
@@ -236,6 +250,7 @@ export const PuzzlePlaySurface = ({
     });
     if (!guess.accepted) {
       attemptMissedRef.current = true;
+      showIncorrectMove(sourceSquare);
       onFeedback({
         index: position.getIndex(),
         guess: { sourceSquare, targetSquare, piece },
@@ -348,11 +363,7 @@ export const PuzzlePlaySurface = ({
           boardWidth={boardWidth}
           checkSquare={position?.getCheckSquare() ?? ''}
           hintSquare={position?.getHintSquare() ?? null}
-          incorrectMoveSquare={
-            showAnswerArrowOnIncorrect
-              ? null
-              : (position?.getIncorrectMoveSquare() ?? null)
-          }
+          incorrectMoveSquare={incorrectMoveSquare}
           correctMoveSquare={correctMoveSquare}
           customArrows={customArrows}
           onPieceDrop={onPieceDrop}
