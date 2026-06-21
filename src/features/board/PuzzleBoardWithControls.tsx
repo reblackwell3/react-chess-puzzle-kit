@@ -11,11 +11,16 @@ import {
   AnalysisLayoutConfig,
   AnalysisMainRenderProps,
   AnalysisSidebarRenderProps,
+  AUTO_ADVANCE_ON_COMPLETE_DELAY_MS,
   DEFAULT_ANALYSIS_LAYOUT,
   EngineEvaluationRenderProps,
   ThemeProvider,
   type BoardThemeId,
 } from 'react-chess-core';
+import {
+  usePuzzleAutoAdvanceCountdown,
+  type PuzzleAutoAdvanceState,
+} from './usePuzzleAutoAdvanceCountdown';
 import {
   defaultRenderControls,
   type PuzzleControlState,
@@ -57,6 +62,7 @@ export type {
   PuzzleControlState,
   PuzzleControlsRenderProps,
 } from './defaults/DefaultPuzzleControls';
+export type { PuzzleAutoAdvanceState } from './usePuzzleAutoAdvanceCountdown';
 
 export type BoardCaptionRenderProps = {
   /** null while the puzzle position is loading */
@@ -110,9 +116,6 @@ const puzzlePositionFromFetch = (
   return newPosition;
 };
 
-/** Brief pause so the user sees a correct result before the next card loads. */
-const AUTO_ADVANCE_ON_COMPLETE_DELAY_MS = 700;
-
 const SOLUTION_STEP_MS = 500;
 const RESUME_AUTO_STEP_MS = 500;
 
@@ -149,6 +152,7 @@ export interface PuzzleBoardWithControlsProps {
     resultStatus: PuzzleResultStatus,
     analysis: AnalysisControls,
     controlState: PuzzleControlState,
+    autoAdvance?: PuzzleAutoAdvanceState,
   ) => React.ReactNode;
   renderAnalysisSidebar?: (
     props: AnalysisSidebarRenderProps,
@@ -176,6 +180,10 @@ export interface PuzzleBoardWithControlsProps {
   autoAdvanceOnComplete?: boolean;
   /** With {@link autoAdvanceOnComplete}, also advance after finishing following a miss or hint. */
   autoAdvanceOnCompleteAfterIncorrect?: boolean;
+  /** Delay before auto-loading the next card (defaults to {@link AUTO_ADVANCE_ON_COMPLETE_DELAY_MS}). */
+  autoAdvanceOnCompleteDelayMs?: number;
+  /** Replay missed solution plies on the board before auto-advancing. */
+  showCompletionRecap?: boolean;
   /** After a wrong guess, play the correct move and wait for the user to advance. */
   revealAnswerOnIncorrect?: boolean;
   /** After a wrong guess, show an arrow to the correct square. */
@@ -208,6 +216,8 @@ export const PuzzleBoardWithControls = ({
   engine,
   autoAdvanceOnComplete = false,
   autoAdvanceOnCompleteAfterIncorrect = false,
+  autoAdvanceOnCompleteDelayMs = AUTO_ADVANCE_ON_COMPLETE_DELAY_MS,
+  showCompletionRecap = false,
   revealAnswerOnIncorrect = false,
   showAnswerArrowOnIncorrect = false,
   allowRetryOnIncorrect = true,
@@ -537,32 +547,17 @@ export const PuzzleBoardWithControls = ({
 
   const resultStatus = getResultStatus();
 
-  useEffect(() => {
-    if (!autoAdvanceOnComplete) {
-      return;
-    }
-    if (resultStatus !== 'complete') {
-      return;
-    }
-    if (hasIncorrectAttempt && !autoAdvanceOnCompleteAfterIncorrect) {
-      return;
-    }
+  const shouldAutoAdvance =
+    autoAdvanceOnComplete &&
+    resultStatus === 'complete' &&
+    !(hasIncorrectAttempt && !autoAdvanceOnCompleteAfterIncorrect) &&
+    !showCompletionRecap;
 
-    const timer = setTimeout(() => {
-      handleNextPuzzle();
-    }, AUTO_ADVANCE_ON_COMPLETE_DELAY_MS);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [
-    autoAdvanceOnComplete,
-    autoAdvanceOnCompleteAfterIncorrect,
-    resultStatus,
-    hasIncorrectAttempt,
+  const autoAdvance = usePuzzleAutoAdvanceCountdown(
+    shouldAutoAdvance,
+    autoAdvanceOnCompleteDelayMs,
     handleNextPuzzle,
-    puzzleNum,
-  ]);
+  );
   const controlState: PuzzleControlState = {
     canShowHint:
       position !== null &&
@@ -680,6 +675,7 @@ export const PuzzleBoardWithControls = ({
                 openAnalysis: analysis.openAnalysis,
               },
               controlState,
+              autoAdvance,
             )}
             {renderBoardFeedback && resultStatus === 'complete' && (
               <div style={puzzleControlsFeedbackStyle(controlsPlacement)}>

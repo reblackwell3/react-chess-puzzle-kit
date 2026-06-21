@@ -19,6 +19,7 @@ export type {
   PuzzleControlState,
   PuzzleControlsRenderProps,
 } from './features/board/defaults/DefaultPuzzleControls';
+export type { PuzzleAutoAdvanceState } from './features/board/usePuzzleAutoAdvanceCountdown';
 export {
   DEFAULT_PUZZLE_BOARD_WIDTH,
   PUZZLE_CONTROLS_BESIDE_RESERVE_PX,
