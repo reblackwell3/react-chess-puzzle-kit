@@ -28,28 +28,35 @@ export const usePuzzleCompletionRecap = ({
   active: boolean;
   onComplete: () => void;
 }): PuzzleCompletionRecapState => {
+  const startFen = source?.startFen ?? '';
+  const movesUci = source?.movesUci ?? [];
+  const startIndex = source?.startIndex ?? 0;
+  const endIndex = source?.endIndex ?? 0;
+  const missedIndices = source?.missedIndices ?? [];
+  const setupUci = source?.setupUci ?? null;
+
   const resolveFen = useCallback(
     (moveIndex: number, afterMove: boolean) => {
-      if (!source) {
+      if (!startFen || movesUci.length === 0) {
         return '';
       }
       return fenAtPlyFromStart(
-        source.startFen,
-        source.movesUci,
+        startFen,
+        movesUci,
         afterMove ? moveIndex + 1 : moveIndex,
       );
     },
-    [source],
+    [movesUci, startFen],
   );
 
   return useSolutionLineRecap({
     active: active && source !== null,
-    movesUci: source?.movesUci ?? [],
-    startIndex: source?.startIndex ?? 0,
-    endIndex: source?.endIndex ?? 0,
-    missedIndices: source?.missedIndices ?? [],
-    segmentStartFen: source?.startFen ?? '',
-    setupUci: source?.setupUci ?? null,
+    movesUci,
+    startIndex,
+    endIndex,
+    missedIndices,
+    segmentStartFen: startFen,
+    setupUci,
     onComplete,
     resolveFen,
   });

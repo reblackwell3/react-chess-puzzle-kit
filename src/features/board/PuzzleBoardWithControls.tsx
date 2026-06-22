@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PuzzleResultStatus, usePuzzleAnalysis } from '../analysis';
 import {
   AnalysisBoard,
@@ -138,15 +138,17 @@ const buildCompletionRecapSource = (
   missedIndices: number[],
 ): PuzzleCompletionRecapSource => {
   const movesUci = position.getSolutionMoves();
-  const hasSetup = movesUci.length > 1;
+  const initialFen = position.getInitialFen();
+  const startIndex =
+    playerMoveIndicesInRange(initialFen, movesUci, 0, movesUci.length)[0] ?? 0;
 
   return {
-    startFen: position.getInitialFen(),
+    startFen: initialFen,
     movesUci,
-    startIndex: hasSetup ? 1 : 0,
+    startIndex,
     endIndex: movesUci.length,
     missedIndices,
-    setupUci: hasSetup ? movesUci[0] ?? null : null,
+    setupUci: startIndex > 0 ? movesUci[startIndex - 1] ?? null : null,
   };
 };
 
@@ -611,10 +613,13 @@ export const PuzzleBoardWithControls = ({
 
   const resultStatus = getResultStatus();
 
-  const completionRecapSource =
-    position && showCompletionRecap
-      ? buildCompletionRecapSource(position, missedMoveIndices)
-      : null;
+  const completionRecapSource = useMemo(
+    () =>
+      position && showCompletionRecap
+        ? buildCompletionRecapSource(position, missedMoveIndices)
+        : null,
+    [position, showCompletionRecap, missedMoveIndices],
+  );
 
   const handleCompletionRecapDone = useCallback(() => {
     setCompletionRecapActive(false);
