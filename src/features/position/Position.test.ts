@@ -1,5 +1,5 @@
 import { Chess } from 'chess.js';
-import { applyUciMove, PuzzlePosition } from './Position';
+import { applyUciMove, advanceToPlayerTurn, PuzzlePosition } from './Position';
 
 const PROMOTION_FEN = '5k2/4P3/8/8/8/8/8/4K3 w - - 0 1';
 const DUAL_CHECKMATE_FEN =
@@ -59,6 +59,36 @@ describe('PuzzlePosition getSideToMove', () => {
   });
 });
 
+describe('advanceToPlayerTurn', () => {
+  it('plays further opponent plies after the first setup move', () => {
+    const position = new PuzzlePosition(
+      'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      ['e2e4', 'e7e5', 'd1h5'],
+    );
+    position.next();
+
+    advanceToPlayerTurn(position);
+
+    expect(position.getIndex()).toBe(2);
+    expect(position.getSideToMove()).toBe('white');
+    expect(position.getPlayerColor()).toBe('white');
+  });
+
+  it('matches puzzlePositionFromFetch setup for a black-to-move opening ply', () => {
+    const fen =
+      'r1bq1rk1/pp3pp1/1nnbp2p/2p5/3P4/2P1B3/PPB1NPPP/RN1Q1RK1 b - - 2 11';
+    const moves = ['b6c4', 'd1d3', 'f7f5', 'd3c4'];
+    const position = new PuzzlePosition(fen, moves);
+    position.next();
+
+    advanceToPlayerTurn(position);
+
+    expect(position.getIndex()).toBe(1);
+    expect(position.getSideToMove()).toBe('white');
+    expect(position.getPlayerColor()).toBe('white');
+  });
+});
+
 describe('PuzzlePosition resume review', () => {
   it('starts at the missed ply and only accepts input on quiz indices', () => {
     const position = new PuzzlePosition(DUAL_CHECKMATE_FEN, DUAL_CHECKMATE_MOVES, {
@@ -88,6 +118,22 @@ describe('PuzzlePosition resume review', () => {
 
     expect(position.getIndex()).toBe(5);
     expect(position.isQuizIndex()).toBe(true);
+  });
+
+  it('opens resume review on the solver side when metadata starts on an opponent ply', () => {
+    const fen =
+      'r1bq1rk1/pp3pp1/1nnbp2p/2p5/3P4/2P1B3/PPB1NPPP/RN1Q1RK1 b - - 2 11';
+    const moves = ['b6c4', 'd1d3', 'f7f5', 'd3c4'];
+    const position = new PuzzlePosition(fen, moves, {
+      startIndex: 0,
+      quizAtIndices: [0],
+    });
+
+    advanceToPlayerTurn(position);
+
+    expect(position.getIndex()).toBe(1);
+    expect(position.getSideToMove()).toBe('white');
+    expect(position.getPlayerColor()).toBe('white');
   });
 });
 

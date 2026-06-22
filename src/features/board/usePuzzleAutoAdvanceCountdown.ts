@@ -33,6 +33,7 @@ export function usePuzzleAutoAdvanceCountdown(
     updateCountdown();
     const intervalId = window.setInterval(updateCountdown, 200);
     const timeoutId = window.setTimeout(() => {
+      window.clearInterval(intervalId);
       setSecondsRemaining(-1);
       onAdvance();
     }, delayMs);

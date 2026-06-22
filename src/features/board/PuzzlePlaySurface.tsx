@@ -21,6 +21,14 @@ export type PuzzleMissFeedback = {
   answerArrowVisible: boolean;
 };
 
+/** Board state driven by the post-completion solution recap animation. */
+export type PuzzleRecapBoardState = {
+  fen: string;
+  lastMoveUci: string | null;
+  customArrows: [string, string, string][];
+  animationDuration: number;
+};
+
 export interface PuzzlePlaySurfaceProps {
   position: PuzzlePosition | null;
   onFeedback: (feedbackData: {
@@ -52,6 +60,8 @@ export interface PuzzlePlaySurfaceProps {
   positionLocked?: boolean;
   /** Fired when refutation miss feedback changes (for host UI). */
   onMissFeedbackChange?: (feedback: PuzzleMissFeedback | null) => void;
+  /** When set, replaces the live puzzle position with the completion recap board. */
+  recapBoard?: PuzzleRecapBoardState | null;
 }
 
 /**
@@ -73,6 +83,7 @@ export const PuzzlePlaySurface = ({
   answerArrowColor = DEFAULT_ANSWER_ARROW_COLOR,
   positionLocked = false,
   onMissFeedbackChange,
+  recapBoard = null,
 }: PuzzlePlaySurfaceProps) => {
   const [showAnswerArrow, setShowAnswerArrow] = useState(false);
   const [incorrectActive, setIncorrectActive] = useState(false);
@@ -184,12 +195,15 @@ export const PuzzlePlaySurface = ({
     useRefutation,
   ]);
 
+  const boardOrientation = position
+    ? (position.getPlayerColor() as 'white' | 'black')
+    : boardOrientationRef.current;
+
   if (position) {
-    boardOrientationRef.current = position.getPlayerColor() as 'white' | 'black';
+    boardOrientationRef.current = boardOrientation;
     boardFenRef.current = position.fen();
   }
 
-  const boardOrientation = boardOrientationRef.current;
   const boardFen = boardFenRef.current;
   const hasBoard = boardFen !== EMPTY_BOARD_FEN;
 
@@ -204,13 +218,19 @@ export const PuzzlePlaySurface = ({
     return [[moveUci.slice(0, 2), moveUci.slice(2, 4), answerArrowColor]];
   }, [showAnswerArrow, position, answerArrowColor, useRefutation]);
 
-  const customArrows =
-    useRefutation && incorrectActive
+  const isRecapping = recapBoard !== null;
+
+  const customArrows = isRecapping
+    ? recapBoard.customArrows
+    : useRefutation && incorrectActive
       ? missBoard.customArrows
       : simpleArrows;
 
-  const displayFen =
-    useRefutation && incorrectActive ? missBoard.boardPosition : boardFen;
+  const displayFen = isRecapping
+    ? recapBoard.fen
+    : useRefutation && incorrectActive
+      ? missBoard.boardPosition
+      : boardFen;
 
   const missLocked =
     useRefutation &&
@@ -220,6 +240,7 @@ export const PuzzlePlaySurface = ({
       missPhase === 'refutation');
 
   const arePiecesDraggable =
+    !isRecapping &&
     position !== null &&
     !positionLocked &&
     !missLocked &&
@@ -367,19 +388,20 @@ export const PuzzlePlaySurface = ({
     <HighlightChessboard
       key={revision}
       boardWidth={boardWidth}
-      checkSquare={position?.getCheckSquare() ?? ''}
-      hintSquare={position?.getHintSquare() ?? null}
-      incorrectMoveSquare={overlayIncorrectSquare}
-      refutationMoveSquare={refutationMoveSquare}
-      correctMoveSquare={correctMoveSquare}
+      checkSquare={isRecapping ? '' : (position?.getCheckSquare() ?? '')}
+      hintSquare={isRecapping ? null : (position?.getHintSquare() ?? null)}
+      incorrectMoveSquare={isRecapping ? null : overlayIncorrectSquare}
+      refutationMoveSquare={isRecapping ? null : refutationMoveSquare}
+      correctMoveSquare={isRecapping ? null : correctMoveSquare}
       customArrows={customArrows}
+      lastMoveUci={isRecapping ? recapBoard.lastMoveUci : null}
       onPieceDrop={onPieceDrop}
       position={displayFen}
       boardOrientation={boardOrientation}
       arePiecesDraggable={arePiecesDraggable}
       areArrowsAllowed={false}
       promotionDialogVariant="modal"
-      animationDuration={0}
+      animationDuration={isRecapping ? recapBoard.animationDuration : 0}
     />
   ) : null;
 };

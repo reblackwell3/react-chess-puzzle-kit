@@ -12,6 +12,7 @@ import {
   AnalysisMainRenderProps,
   AnalysisSidebarRenderProps,
   AUTO_ADVANCE_ON_COMPLETE_DELAY_MS,
+  BoardCompleteCheckOverlay,
   DEFAULT_ANALYSIS_LAYOUT,
   EngineEvaluationRenderProps,
   ThemeProvider,
@@ -21,6 +22,11 @@ import {
   usePuzzleAutoAdvanceCountdown,
   type PuzzleAutoAdvanceState,
 } from './usePuzzleAutoAdvanceCountdown';
+import {
+  PUZZLE_COMPLETION_RECAP_SETUP_MS,
+  usePuzzleCompletionRecap,
+  type PuzzleCompletionRecapSource,
+} from './usePuzzleCompletionRecap';
 import {
   defaultRenderControls,
   type PuzzleControlState,
@@ -41,7 +47,7 @@ import {
   type PuzzleControlsPlacement,
 } from './puzzleBoardLayout';
 import { useStackPuzzleControlsBelow } from './useStackPuzzleControlsBelow';
-import { PuzzlePosition } from '../position/Position';
+import { advanceToPlayerTurn, playerMoveIndicesInRange, PuzzlePosition } from '../position/Position';
 export type { PuzzleMoveRecord } from '../position/moveHistory';
 export type {
   AnalysisContainerRenderProps,
@@ -103,7 +109,7 @@ export type BoardFeedbackRenderProps = {
   hintUsed?: boolean;
 };
 
-/** Apply the opponent setup ply immediately so the board does not flash on load. */
+/** Apply opponent setup plies immediately so the board does not flash on load. */
 const puzzlePositionFromFetch = (
   fen: string,
   moves: string[],
@@ -112,12 +118,37 @@ const puzzlePositionFromFetch = (
   const newPosition = new PuzzlePosition(fen, moves, resume);
   if (!resume && moves.length > 1) {
     newPosition.next();
+    advanceToPlayerTurn(newPosition);
+  } else if (
+    resume &&
+    newPosition.getSideToMove() !== newPosition.getPlayerColor()
+  ) {
+    advanceToPlayerTurn(newPosition);
   }
   return newPosition;
 };
 
 const SOLUTION_STEP_MS = 500;
 const RESUME_AUTO_STEP_MS = 500;
+
+const uniqueIndices = (indices: number[]): number[] => [...new Set(indices)];
+
+const buildCompletionRecapSource = (
+  position: PuzzlePosition,
+  missedIndices: number[],
+): PuzzleCompletionRecapSource => {
+  const movesUci = position.getSolutionMoves();
+  const hasSetup = movesUci.length > 1;
+
+  return {
+    startFen: position.getInitialFen(),
+    movesUci,
+    startIndex: hasSetup ? 1 : 0,
+    endIndex: movesUci.length,
+    missedIndices,
+    setupUci: hasSetup ? movesUci[0] ?? null : null,
+  };
+};
 
 export type PuzzleFetchResult = {
   fen: string;
@@ -244,6 +275,11 @@ export const PuzzleBoardWithControls = ({
   const [missFeedback, setMissFeedback] = useState<PuzzleMissFeedback | null>(
     null,
   );
+  const [missedMoveIndices, setMissedMoveIndices] = useState<number[]>([]);
+  const [completionCheckVisible, setCompletionCheckVisible] = useState(false);
+  const [completionRecapActive, setCompletionRecapActive] = useState(false);
+  const [completionRecapDone, setCompletionRecapDone] = useState(false);
+  const completionFlowStartedRef = useRef(false);
   const [, setInteractionNum] = useState(0);
   const solutionAnimationRef = useRef<{
     cancelled: boolean;
@@ -281,6 +317,11 @@ export const PuzzleBoardWithControls = ({
     setPuzzleComplete(false);
     setCompletedAfterMiss(false);
     setMissFeedback(null);
+    setMissedMoveIndices([]);
+    setCompletionCheckVisible(false);
+    setCompletionRecapActive(false);
+    setCompletionRecapDone(false);
+    completionFlowStartedRef.current = false;
     onFetch()
       .then((data) => {
         if (cancelled) {
@@ -327,9 +368,21 @@ export const PuzzleBoardWithControls = ({
 
     if (feedbackData.hintRequested) {
       setHintUsed(true);
+      setMissedMoveIndices((prev) =>
+        uniqueIndices([...prev, feedbackData.index]),
+      );
     }
     if (incorrectThisFeedback) {
       setHasIncorrectAttempt(true);
+    }
+    if (
+      feedbackData.isCorrect === false &&
+      !feedbackData.isFinished &&
+      !feedbackData.solutionShown
+    ) {
+      setMissedMoveIndices((prev) =>
+        uniqueIndices([...prev, feedbackData.index]),
+      );
     }
     if (feedbackData.isFinished) {
       setPuzzleComplete(true);
@@ -532,6 +585,17 @@ export const PuzzleBoardWithControls = ({
     position.recordSolutionShown();
     position.setSolutionRevealed(true);
     position.wantsHint(false);
+    setMissedMoveIndices((prev) =>
+      uniqueIndices([
+        ...prev,
+        ...playerMoveIndicesInRange(
+          position.getInitialFen(),
+          position.getSolutionMoves(),
+          position.getIndex(),
+          position.getSolutionMoves().length,
+        ),
+      ]),
+    );
     handleFeedback({
       index: position.getIndex(),
       solutionShown: true,
@@ -547,11 +611,59 @@ export const PuzzleBoardWithControls = ({
 
   const resultStatus = getResultStatus();
 
+  const completionRecapSource =
+    position && showCompletionRecap
+      ? buildCompletionRecapSource(position, missedMoveIndices)
+      : null;
+
+  const handleCompletionRecapDone = useCallback(() => {
+    setCompletionRecapActive(false);
+    setCompletionRecapDone(true);
+  }, []);
+
+  const completionRecap = usePuzzleCompletionRecap({
+    source: completionRecapSource,
+    active: completionRecapActive,
+    onComplete: handleCompletionRecapDone,
+  });
+
+  const isCompletionRecapping =
+    showCompletionRecap && (completionRecapActive || completionRecap.active);
+
+  useEffect(() => {
+    if (
+      !showCompletionRecap ||
+      resultStatus !== 'complete' ||
+      loadingNextPuzzle ||
+      completionFlowStartedRef.current
+    ) {
+      return;
+    }
+
+    completionFlowStartedRef.current = true;
+    setCompletionCheckVisible(true);
+  }, [loadingNextPuzzle, resultStatus, showCompletionRecap]);
+
+  useEffect(() => {
+    if (!completionCheckVisible) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setCompletionCheckVisible(false);
+      setCompletionRecapActive(true);
+    }, PUZZLE_COMPLETION_RECAP_SETUP_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [completionCheckVisible]);
+
   const shouldAutoAdvance =
     autoAdvanceOnComplete &&
     resultStatus === 'complete' &&
     !(hasIncorrectAttempt && !autoAdvanceOnCompleteAfterIncorrect) &&
-    !showCompletionRecap;
+    (!showCompletionRecap || completionRecapDone);
 
   const autoAdvance = usePuzzleAutoAdvanceCountdown(
     shouldAutoAdvance,
@@ -640,10 +752,33 @@ export const PuzzleBoardWithControls = ({
                   autoShowWrongMoves={autoShowWrongMoves}
                   refutationEngine={refutationEngine ?? engine}
                   answerArrowColor={answerArrowColor}
-                  positionLocked={loadingNextPuzzle}
+                  positionLocked={
+                    loadingNextPuzzle ||
+                    completionCheckVisible ||
+                    isCompletionRecapping
+                  }
                   onMissFeedbackChange={setMissFeedback}
+                  recapBoard={
+                    isCompletionRecapping
+                      ? {
+                          fen: completionRecap.fen,
+                          lastMoveUci: completionRecap.lastMoveUci,
+                          customArrows: completionRecap.customArrows,
+                          animationDuration: completionRecap.animationDuration,
+                        }
+                      : null
+                  }
                 />
               </div>
+              {completionCheckVisible && (
+                <BoardCompleteCheckOverlay
+                  variant={
+                    hasIncorrectAttempt || completedAfterMiss || hintUsed
+                      ? 'partial'
+                      : 'success'
+                  }
+                />
+              )}
             </div>
             {renderBoardCaption && (
               <div style={puzzleBoardCaptionSlotStyle()}>

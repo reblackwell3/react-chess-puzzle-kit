@@ -122,6 +122,40 @@ export function playerColorForSolution(
   return chess.turn() === 'w' ? 'white' : 'black';
 }
 
+/** Move indices in `[fromIndex, toIndex)` where the solver is on move. */
+export function playerMoveIndicesInRange(
+  initialFen: string,
+  moves: string[],
+  fromIndex: number,
+  toIndex: number,
+): number[] {
+  const playerColor = playerColorForSolution(initialFen, moves);
+  const chess = new Chess(initialFen);
+  const indices: number[] = [];
+
+  for (let i = 0; i < toIndex && i < moves.length; i++) {
+    const side = chess.turn() === 'w' ? 'white' : 'black';
+    if (i >= fromIndex && side === playerColor) {
+      indices.push(i);
+    }
+    applyUciMove(chess, moves[i]!);
+  }
+
+  return indices;
+}
+
+/** Auto-play opponent setup plies until the solver is on move. */
+export function advanceToPlayerTurn(position: PuzzlePosition): void {
+  while (
+    !position.isFinished() &&
+    position.getSideToMove() !== position.getPlayerColor()
+  ) {
+    if (!position.next()) {
+      break;
+    }
+  }
+}
+
 export type PuzzleResumeConfig = {
   startIndex: number;
   quizAtIndices: number[];
