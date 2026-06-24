@@ -1,3 +1,4 @@
+import { lastMoveUciAtPly } from 'react-chess-core';
 import { Traversable } from './Traversable';
 import { Chess, Square } from 'chess.js';
 import { PuzzleMoveRecord } from './moveHistory';
@@ -36,6 +37,11 @@ export abstract class Position implements Traversable {
 
   getIndex(): number {
     return this.i;
+  }
+
+  /** UCI of the move that produced the current position. */
+  getLastMoveUci(): string | null {
+    return lastMoveUciAtPly(this.moves, this.i);
   }
 
   // Common methods shared by all positions

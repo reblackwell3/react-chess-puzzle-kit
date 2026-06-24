@@ -49,6 +49,28 @@ describe('applyUciMove', () => {
   });
 });
 
+describe('PuzzlePosition getLastMoveUci', () => {
+  it('returns the setup move after advancing to the trainer ply', () => {
+    const position = new PuzzlePosition(
+      'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
+      ['e7e5', 'e2e4'],
+    );
+    position.next();
+
+    expect(position.getIndex()).toBe(1);
+    expect(position.getLastMoveUci()).toBe('e7e5');
+  });
+
+  it('returns null at the initial ply', () => {
+    const position = new PuzzlePosition(
+      'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      ['e2e4'],
+    );
+
+    expect(position.getLastMoveUci()).toBeNull();
+  });
+});
+
 describe('PuzzlePosition getSideToMove', () => {
   it('reflects the active side from the current FEN', () => {
     const position = new PuzzlePosition(PROMOTION_FEN, ['e7e8q']);

@@ -232,6 +232,12 @@ export const PuzzlePlaySurface = ({
       ? missBoard.boardPosition
       : boardFen;
 
+  const lastMoveUci = isRecapping
+    ? recapBoard.lastMoveUci
+    : useRefutation && incorrectActive
+      ? missBoard.lastMoveUci
+      : (position?.getLastMoveUci() ?? null);
+
   const missLocked =
     useRefutation &&
     incorrectActive &&
@@ -394,7 +400,7 @@ export const PuzzlePlaySurface = ({
       refutationMoveSquare={isRecapping ? null : refutationMoveSquare}
       correctMoveSquare={isRecapping ? null : correctMoveSquare}
       customArrows={customArrows}
-      lastMoveUci={isRecapping ? recapBoard.lastMoveUci : null}
+      lastMoveUci={lastMoveUci}
       onPieceDrop={onPieceDrop}
       position={displayFen}
       boardOrientation={boardOrientation}
