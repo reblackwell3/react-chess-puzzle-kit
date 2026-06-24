@@ -664,11 +664,14 @@ export const PuzzleBoardWithControls = ({
     };
   }, [completionCheckVisible]);
 
+  const analysis = usePuzzleAnalysis(position, resultStatus, puzzleNum);
+
   const shouldAutoAdvance =
     autoAdvanceOnComplete &&
     resultStatus === 'complete' &&
     !(hasIncorrectAttempt && !autoAdvanceOnCompleteAfterIncorrect) &&
-    (!showCompletionRecap || completionRecapDone);
+    (!showCompletionRecap || completionRecapDone) &&
+    !analysis.isOpen;
 
   const autoAdvance = usePuzzleAutoAdvanceCountdown(
     shouldAutoAdvance,
@@ -685,7 +688,6 @@ export const PuzzleBoardWithControls = ({
       position !== null &&
       (position.isSolutionRevealed() || !position.isFinished()),
   };
-  const analysis = usePuzzleAnalysis(position, resultStatus, puzzleNum);
   const analysisSnapshot =
     analysis.isOpen && analysis.snapshot ? analysis.snapshot : null;
   const resolvedAnalysisBoardWidth =
