@@ -15,6 +15,8 @@ import {
   BoardCompleteCheckOverlay,
   DEFAULT_ANALYSIS_LAYOUT,
   EngineEvaluationRenderProps,
+  isAnalyzableFen,
+  PlayTimeEngineProvider,
   ThemeProvider,
   type BoardThemeId,
 } from 'react-chess-core';
@@ -209,6 +211,8 @@ export interface PuzzleBoardWithControlsProps {
   /** Custom board/sidebar placement (overrides {@link analysisLayout} grid). */
   renderAnalysisMain?: (props: AnalysisMainRenderProps) => React.ReactNode;
   engine?: AnalysisEngineOptions;
+  /** Background multipv on the setup position for instant refutation (silent on puzzles). */
+  playTimeEngine?: AnalysisEngineOptions;
   /** After a clean solve (no wrong move, hint, or solution reveal), load the next card. */
   autoAdvanceOnComplete?: boolean;
   /** With {@link autoAdvanceOnComplete}, also advance after finishing following a miss or hint. */
@@ -247,6 +251,7 @@ export const PuzzleBoardWithControls = ({
   analysisBoardWidth,
   renderAnalysisMain,
   engine,
+  playTimeEngine,
   autoAdvanceOnComplete = false,
   autoAdvanceOnCompleteAfterIncorrect = false,
   autoAdvanceOnCompleteDelayMs = AUTO_ADVANCE_ON_COMPLETE_DELAY_MS,
@@ -690,6 +695,19 @@ export const PuzzleBoardWithControls = ({
   };
   const analysisSnapshot =
     analysis.isOpen && analysis.snapshot ? analysis.snapshot : null;
+  const setupFen = position?.fen() ?? '';
+  const playTimeEnabled =
+    Boolean(position) &&
+    !position?.isFinished() &&
+    !analysisSnapshot &&
+    isAnalyzableFen(setupFen);
+  const resolvedPlayTimeEngine = useMemo(
+    () => ({
+      scriptUrl: engine?.scriptUrl,
+      ...playTimeEngine,
+    }),
+    [engine?.scriptUrl, playTimeEngine],
+  );
   const resolvedAnalysisBoardWidth =
     analysisBoardWidth ?? analysisLayout.boardWidth;
 
@@ -746,7 +764,12 @@ export const PuzzleBoardWithControls = ({
           >
             <div style={puzzleBoardSlotWrapperStyle()}>
               <div style={puzzleBoardSlotStyle()}>
-                <PuzzlePlaySurface
+                <PlayTimeEngineProvider
+                  fen={setupFen}
+                  enabled={playTimeEnabled}
+                  options={resolvedPlayTimeEngine}
+                >
+                  <PuzzlePlaySurface
                   position={position}
                   boardWidth={puzzleBoardWidth}
                   onFeedback={handleFeedback}
@@ -776,6 +799,7 @@ export const PuzzleBoardWithControls = ({
                       : null
                   }
                 />
+                </PlayTimeEngineProvider>
               </div>
               {completionCheckVisible && (
                 <BoardCompleteCheckOverlay
