@@ -3,10 +3,13 @@ import { Chess } from 'chess.js';
 import {
   evaluateExpectedMoveDrop,
   fenAfterUci,
+  isAnalyzableFen,
   lastMoveUciAtPly,
+  PlayTimeEngineProvider,
   ThemeProvider,
   useCorrectMoveFeedback,
   useIncorrectMoveFeedback,
+  type AnalysisEngineOptions,
   type BoardThemeId,
 } from 'react-chess-core';
 import { LineBoard } from './LineBoard';
@@ -64,6 +67,10 @@ export interface LineBoardWithControlsProps {
   onMove?: (feedback: LineMoveFeedback) => void;
   /** Omit to use {@link defaultRenderLineControls}. */
   renderControls?: (props: LineControlsRenderProps) => React.ReactNode;
+  /** Optional content above the board (e.g. eval bar), inside play-time engine context. */
+  renderAboveBoard?: (props: { fen: string }) => React.ReactNode;
+  /** Stockfish options when {@link renderAboveBoard} is set. */
+  playTimeEngine?: AnalysisEngineOptions;
   boardWidth?: number;
   /** Delay before auto-playing each opponent move (ms). */
   opponentMoveDelayMs?: number;
@@ -91,6 +98,8 @@ export const LineBoardWithControls = ({
   onComplete,
   onMove,
   renderControls = defaultRenderLineControls,
+  renderAboveBoard,
+  playTimeEngine,
   boardWidth = DEFAULT_PUZZLE_BOARD_WIDTH,
   opponentMoveDelayMs = DEFAULT_OPPONENT_MOVE_DELAY_MS,
 }: LineBoardWithControlsProps) => {
@@ -245,24 +254,41 @@ export const LineBoardWithControls = ({
   const controlsPlacement: PuzzleControlsPlacement = stackControlsBelow
     ? 'below'
     : 'beside';
+  const playTimeEnabled = isAnalyzableFen(boardFen);
+  const boardColumn = (
+    <>
+      {renderAboveBoard?.({ fen: boardFen })}
+      <div style={puzzleBoardSlotStyle()}>
+        <LineBoard
+          fen={boardFen}
+          orientation={orientation}
+          trainSide={line.trainSide}
+          draggable={isUserTurn}
+          correctMoveSquare={correctMoveSquare}
+          incorrectMoveSquare={incorrectMoveSquare}
+          lastMoveUci={lastMoveUci}
+          onPieceDrop={handleDrop}
+          boardWidth={boardWidth}
+        />
+      </div>
+    </>
+  );
 
   return (
     <ThemeProvider theme={theme} boardTheme={boardTheme}>
       <div style={puzzlePlayRowStyle(controlsPlacement)}>
         <div style={puzzleBoardColumnStyle(boardWidth, controlsPlacement)}>
-          <div style={puzzleBoardSlotStyle()}>
-            <LineBoard
+          {renderAboveBoard ? (
+            <PlayTimeEngineProvider
               fen={boardFen}
-              orientation={orientation}
-              trainSide={line.trainSide}
-              draggable={isUserTurn}
-              correctMoveSquare={correctMoveSquare}
-              incorrectMoveSquare={incorrectMoveSquare}
-              lastMoveUci={lastMoveUci}
-              onPieceDrop={handleDrop}
-              boardWidth={boardWidth}
-            />
-          </div>
+              enabled={playTimeEnabled}
+              options={playTimeEngine}
+            >
+              {boardColumn}
+            </PlayTimeEngineProvider>
+          ) : (
+            boardColumn
+          )}
         </div>
         <div style={puzzleControlsSlotStyle(controlsPlacement)}>
           {renderControls({

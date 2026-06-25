@@ -58,6 +58,7 @@ export const usePuzzleCompletionRecap = ({
     segmentStartFen: startFen,
     setupUci,
     onComplete,
+    completeImmediatelyWhenNoMisses: true,
     resolveFen,
   });
 };

@@ -135,20 +135,17 @@ export const PuzzlePlaySurface = ({
     engineOptions: refutationEngine,
   });
 
-  const missPhase = missBoard.missSequence.sequence?.phase;
+  const missPhase = missBoard.phase;
   const answerArrowVisible = useRefutation
     ? incorrectActive && missPhase === 'answer'
     : showAnswerArrow;
 
   const overlayIncorrectSquare =
-    transientIncorrectSquare ??
-    (useRefutation && incorrectActive
-      ? missBoard.missSequence.display.incorrectMoveSquare
-      : null);
-  const refutationMoveSquare =
     useRefutation && incorrectActive
-      ? missBoard.missSequence.display.refutationMoveSquare
-      : null;
+      ? missBoard.incorrectMoveSquare
+      : transientIncorrectSquare;
+  const refutationMoveSquare =
+    useRefutation && incorrectActive ? missBoard.refutationMoveSquare : null;
 
   useEffect(() => {
     setShowAnswerArrow(false);
@@ -171,7 +168,7 @@ export const PuzzlePlaySurface = ({
     if (useRefutation && incorrectActive) {
       onMissFeedbackChange({
         refutationSan: missBoard.refutation.refutationSan,
-        phase: missBoard.missSequence.sequence?.phase ?? null,
+        phase: missBoard.phase,
         answerArrowVisible,
       });
       return;
@@ -188,7 +185,7 @@ export const PuzzlePlaySurface = ({
   }, [
     answerArrowVisible,
     incorrectActive,
-    missBoard.missSequence.sequence?.phase,
+    missBoard.phase,
     missBoard.refutation.refutationSan,
     onMissFeedbackChange,
     showAnswerArrow,
@@ -238,12 +235,7 @@ export const PuzzlePlaySurface = ({
       ? missBoard.lastMoveUci
       : (position?.getLastMoveUci() ?? null);
 
-  const missLocked =
-    useRefutation &&
-    incorrectActive &&
-    (missBoard.boardAnimating ||
-      missPhase === 'wrong' ||
-      missPhase === 'refutation');
+  const missLocked = useRefutation && incorrectActive && missBoard.inputLocked;
 
   const arePiecesDraggable =
     !isRecapping &&
@@ -286,7 +278,9 @@ export const PuzzlePlaySurface = ({
     });
     if (!guess.accepted) {
       attemptMissedRef.current = true;
-      showIncorrectMove(useRefutation ? targetSquare : sourceSquare);
+      if (!useRefutation) {
+        showIncorrectMove(sourceSquare);
+      }
       onFeedback({
         index: position.getIndex(),
         guess: { sourceSquare, targetSquare, piece },
@@ -407,7 +401,13 @@ export const PuzzlePlaySurface = ({
       arePiecesDraggable={arePiecesDraggable}
       areArrowsAllowed={false}
       promotionDialogVariant="modal"
-      animationDuration={isRecapping ? recapBoard.animationDuration : 0}
+      animationDuration={
+        isRecapping
+          ? recapBoard.animationDuration
+          : useRefutation && incorrectActive
+            ? missBoard.animationDuration
+            : 0
+      }
     />
   ) : null;
 };
