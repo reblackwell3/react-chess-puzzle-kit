@@ -198,6 +198,8 @@ export interface PuzzleBoardWithControlsProps {
   renderEngineEvaluation?: (
     props: EngineEvaluationRenderProps,
   ) => React.ReactNode;
+  /** Optional content above the board (e.g. eval bar), inside play-time engine context. */
+  renderAboveBoard?: (props: { fen: string }) => React.ReactNode;
   /** Optional label below the board (e.g. side to move). */
   renderBoardCaption?: (props: BoardCaptionRenderProps) => React.ReactNode;
   /** Optional result feedback shown at the bottom of the controls column. */
@@ -244,6 +246,7 @@ export const PuzzleBoardWithControls = ({
   renderAnalysisSidebar,
   renderAnalysisContainer,
   renderEngineEvaluation,
+  renderAboveBoard,
   renderBoardCaption,
   renderBoardFeedback,
   puzzleBoardWidth = DEFAULT_PUZZLE_BOARD_WIDTH,
@@ -651,8 +654,12 @@ export const PuzzleBoardWithControls = ({
     }
 
     completionFlowStartedRef.current = true;
+    if (missedMoveIndices.length === 0) {
+      setCompletionRecapDone(true);
+      return;
+    }
     setCompletionCheckVisible(true);
-  }, [loadingNextPuzzle, resultStatus, showCompletionRecap]);
+  }, [loadingNextPuzzle, missedMoveIndices, resultStatus, showCompletionRecap]);
 
   useEffect(() => {
     if (!completionCheckVisible) {
@@ -762,55 +769,56 @@ export const PuzzleBoardWithControls = ({
           <div
             style={puzzleBoardColumnStyle(puzzleBoardWidth, controlsPlacement)}
           >
-            <div style={puzzleBoardSlotWrapperStyle()}>
-              <div style={puzzleBoardSlotStyle()}>
-                <PlayTimeEngineProvider
-                  fen={setupFen}
-                  enabled={playTimeEnabled}
-                  options={resolvedPlayTimeEngine}
-                >
+            <PlayTimeEngineProvider
+              fen={setupFen}
+              enabled={playTimeEnabled}
+              options={resolvedPlayTimeEngine}
+            >
+              {renderAboveBoard?.({ fen: setupFen })}
+              <div style={puzzleBoardSlotWrapperStyle()}>
+                <div style={puzzleBoardSlotStyle()}>
                   <PuzzlePlaySurface
-                  position={position}
-                  boardWidth={puzzleBoardWidth}
-                  onFeedback={handleFeedback}
-                  incInteractionNum={incInteractionNum}
-                  onResumeCorrect={runResumeAutoAdvance}
-                  revealAnswerOnIncorrect={revealAnswerOnIncorrect}
-                  showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
-                  allowRetryOnIncorrect={allowRetryOnIncorrect}
-                  showRefutationOnIncorrect={refutationOnIncorrect}
-                  autoShowWrongMoves={autoShowWrongMoves}
-                  refutationEngine={refutationEngine ?? engine}
-                  answerArrowColor={answerArrowColor}
-                  positionLocked={
-                    loadingNextPuzzle ||
-                    completionCheckVisible ||
-                    isCompletionRecapping
-                  }
-                  onMissFeedbackChange={setMissFeedback}
-                  recapBoard={
-                    isCompletionRecapping
-                      ? {
-                          fen: completionRecap.fen,
-                          lastMoveUci: completionRecap.lastMoveUci,
-                          customArrows: completionRecap.customArrows,
-                          animationDuration: completionRecap.animationDuration,
-                        }
-                      : null
-                  }
-                />
-                </PlayTimeEngineProvider>
+                    position={position}
+                    boardWidth={puzzleBoardWidth}
+                    onFeedback={handleFeedback}
+                    incInteractionNum={incInteractionNum}
+                    onResumeCorrect={runResumeAutoAdvance}
+                    revealAnswerOnIncorrect={revealAnswerOnIncorrect}
+                    showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
+                    allowRetryOnIncorrect={allowRetryOnIncorrect}
+                    showRefutationOnIncorrect={refutationOnIncorrect}
+                    autoShowWrongMoves={autoShowWrongMoves}
+                    refutationEngine={refutationEngine ?? engine}
+                    answerArrowColor={answerArrowColor}
+                    positionLocked={
+                      loadingNextPuzzle ||
+                      completionCheckVisible ||
+                      isCompletionRecapping
+                    }
+                    onMissFeedbackChange={setMissFeedback}
+                    recapBoard={
+                      isCompletionRecapping
+                        ? {
+                            fen: completionRecap.fen,
+                            lastMoveUci: completionRecap.lastMoveUci,
+                            customArrows: completionRecap.customArrows,
+                            animationDuration: completionRecap.animationDuration,
+                          }
+                        : null
+                    }
+                  />
+                </div>
+                {completionCheckVisible && (
+                  <BoardCompleteCheckOverlay
+                    variant={
+                      hasIncorrectAttempt || completedAfterMiss || hintUsed
+                        ? 'partial'
+                        : 'success'
+                    }
+                  />
+                )}
               </div>
-              {completionCheckVisible && (
-                <BoardCompleteCheckOverlay
-                  variant={
-                    hasIncorrectAttempt || completedAfterMiss || hintUsed
-                      ? 'partial'
-                      : 'success'
-                  }
-                />
-              )}
-            </div>
+            </PlayTimeEngineProvider>
             {renderBoardCaption && (
               <div style={puzzleBoardCaptionSlotStyle()}>
                 {renderBoardCaption({
