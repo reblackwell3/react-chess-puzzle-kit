@@ -49,7 +49,12 @@ import {
   type PuzzleControlsPlacement,
 } from './puzzleBoardLayout';
 import { useStackPuzzleControlsBelow } from './useStackPuzzleControlsBelow';
-import { advanceToPlayerTurn, playerMoveIndicesInRange, PuzzlePosition } from '../position/Position';
+import {
+  advanceToPlayerTurn,
+  normalizePuzzleResumeConfig,
+  playerMoveIndicesInRange,
+  PuzzlePosition,
+} from '../position/Position';
 export type { PuzzleMoveRecord } from '../position/moveHistory';
 export type {
   AnalysisContainerRenderProps,
@@ -117,16 +122,9 @@ const puzzlePositionFromFetch = (
   moves: string[],
   resume?: PuzzleFetchResult['resume'],
 ): PuzzlePosition => {
-  const newPosition = new PuzzlePosition(fen, moves, resume);
-  if (!resume && moves.length > 1) {
-    newPosition.next();
-    advanceToPlayerTurn(newPosition);
-  } else if (
-    resume &&
-    newPosition.getSideToMove() !== newPosition.getPlayerColor()
-  ) {
-    advanceToPlayerTurn(newPosition);
-  }
+  const normalizedResume = normalizePuzzleResumeConfig(fen, moves, resume);
+  const newPosition = new PuzzlePosition(fen, moves, normalizedResume);
+  advanceToPlayerTurn(newPosition);
   return newPosition;
 };
 

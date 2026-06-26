@@ -1,5 +1,15 @@
 import { Chess } from 'chess.js';
-import { applyUciMove, advanceToPlayerTurn, PuzzlePosition } from './Position';
+import {
+  applyUciMove,
+  advanceToPlayerTurn,
+  normalizePuzzleResumeConfig,
+  PuzzlePosition,
+  sideToMoveFromFen,
+} from './Position';
+
+const YQSZL_FEN =
+  'r3r1k1/p1pb2pp/1p1p4/3P1p2/2P5/1P6/Pq2BPPP/R2QR1K1 w - - 1 17';
+const YQSZL_MOVES = 'd1c1 e8e2 c1b2 e2b2'.split(' ');
 
 const PROMOTION_FEN = '5k2/4P3/8/8/8/8/8/4K3 w - - 0 1';
 const DUAL_CHECKMATE_FEN =
@@ -192,5 +202,48 @@ describe('PuzzlePosition solution walkthrough', () => {
     playSolutionLine(position);
 
     expect(new Chess(position.fen()).isGameOver()).toBe(true);
+  });
+});
+
+describe('sideToMoveFromFen', () => {
+  it('reads the side-to-move field from a FEN string', () => {
+    expect(
+      sideToMoveFromFen(
+        'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
+      ),
+    ).toBe('black');
+    expect(
+      sideToMoveFromFen(
+        'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e3 0 1',
+      ),
+    ).toBe('white');
+  });
+});
+
+describe('normalizePuzzleResumeConfig YQSzL', () => {
+  it('remaps opponent ply 0 to solver ply 1', () => {
+    expect(
+      normalizePuzzleResumeConfig(YQSZL_FEN, YQSZL_MOVES, {
+        startIndex: 0,
+        quizAtIndices: [0],
+      }),
+    ).toEqual({
+      startIndex: 1,
+      quizAtIndices: [1],
+    });
+  });
+
+  it('loads a draggable black-to-move quiz after resume normalization', () => {
+    const resume = normalizePuzzleResumeConfig(YQSZL_FEN, YQSZL_MOVES, {
+      startIndex: 0,
+      quizAtIndices: [0],
+    });
+    const position = new PuzzlePosition(YQSZL_FEN, YQSZL_MOVES, resume);
+    advanceToPlayerTurn(position);
+
+    expect(position.getIndex()).toBe(1);
+    expect(position.getSideToMove()).toBe('black');
+    expect(position.getPlayerColor()).toBe('black');
+    expect(position.isQuizIndex()).toBe(true);
   });
 });
