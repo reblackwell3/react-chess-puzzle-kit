@@ -30,11 +30,15 @@ export const buildAnalysisContext = (
 
 export const isAnalysisAvailable = (
   position: PuzzlePosition | null,
-  _resultStatus: PuzzleResultStatus,
+  resultStatus: PuzzleResultStatus,
 ): boolean => {
   if (!position) {
     return false;
   }
 
-  return buildAnalysisContext(position).solutionMoves.length > 0;
+  if (resultStatus === 'complete') {
+    return buildAnalysisContext(position).solutionMoves.length > 0;
+  }
+
+  return false;
 };
