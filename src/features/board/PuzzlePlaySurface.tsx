@@ -57,6 +57,8 @@ export interface PuzzlePlaySurfaceProps {
   autoShowWrongMoves?: boolean;
   /** Stockfish options for refutation analysis. */
   refutationEngine?: AnalysisEngineOptions;
+  /** Play-time search depth; instant refutation cache requires the wrong line at this depth. */
+  setupCacheTargetDepth?: number;
   answerArrowColor?: string;
   /** While the next card is loading, keep the prior board visible but locked. */
   positionLocked?: boolean;
@@ -82,6 +84,7 @@ export const PuzzlePlaySurface = ({
   showRefutationOnIncorrect = false,
   autoShowWrongMoves = true,
   refutationEngine,
+  setupCacheTargetDepth,
   answerArrowColor = DEFAULT_ANSWER_ARROW_COLOR,
   positionLocked = false,
   onMissFeedbackChange,
@@ -135,6 +138,7 @@ export const PuzzlePlaySurface = ({
     // sequence; the replay "retry without arrow" setting does not apply here.
     autoShowWrongMoves: useRefutation ? true : autoShowWrongMoves,
     engineOptions: refutationEngine,
+    setupCacheTargetDepth,
   });
 
   const missPhase = missBoard.phase;

@@ -210,6 +210,8 @@ export interface PuzzleBoardWithControlsProps {
   analysisBoardWidth?: number;
   /** Custom board/sidebar placement (overrides {@link analysisLayout} grid). */
   renderAnalysisMain?: (props: AnalysisMainRenderProps) => React.ReactNode;
+  /** After auto-advance or Next Puzzle, run instead of fetching the next card. */
+  onNextPuzzle?: () => void;
   engine?: AnalysisEngineOptions;
   /** Background multipv on the setup position for instant refutation (silent on puzzles). */
   playTimeEngine?: AnalysisEngineOptions;
@@ -264,6 +266,7 @@ export const PuzzleBoardWithControls = ({
   autoShowWrongMoves = true,
   refutationEngine,
   answerArrowColor,
+  onNextPuzzle,
 }: PuzzleBoardWithControlsProps) => {
   const refutationOnIncorrect =
     showRefutationOnIncorrect ?? showAnswerArrowOnIncorrect;
@@ -614,8 +617,12 @@ export const PuzzleBoardWithControls = ({
   };
 
   const handleNextPuzzle = useCallback(() => {
+    if (onNextPuzzle) {
+      onNextPuzzle();
+      return;
+    }
     setPuzzleNum((prevPuzzleNum) => prevPuzzleNum + 1);
-  }, []);
+  }, [onNextPuzzle]);
 
   const resultStatus = getResultStatus();
 
@@ -787,6 +794,7 @@ export const PuzzleBoardWithControls = ({
                     showRefutationOnIncorrect={refutationOnIncorrect}
                     autoShowWrongMoves={autoShowWrongMoves}
                     refutationEngine={refutationEngine ?? engine}
+                    setupCacheTargetDepth={resolvedPlayTimeEngine.depth}
                     answerArrowColor={answerArrowColor}
                     positionLocked={
                       loadingNextPuzzle ||
