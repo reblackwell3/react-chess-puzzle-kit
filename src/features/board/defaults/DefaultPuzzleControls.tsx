@@ -53,12 +53,6 @@ export const DefaultPuzzleControls = ({
         Analysis
       </button>
     )}
-    {resultStatus === 'complete' && (
-      <span style={statusStyle}>Complete</span>
-    )}
-    {resultStatus === 'incorrect' && (
-      <span style={{ ...statusStyle, color: '#c62828' }}>Incorrect</span>
-    )}
   </div>
 );
 
@@ -95,10 +89,4 @@ const buttonStyle: React.CSSProperties = {
   borderRadius: 4,
   border: '1px solid #ccc',
   background: '#f5f5f5',
-};
-
-const statusStyle: React.CSSProperties = {
-  fontSize: 14,
-  fontWeight: 600,
-  color: '#2e7d32',
 };
