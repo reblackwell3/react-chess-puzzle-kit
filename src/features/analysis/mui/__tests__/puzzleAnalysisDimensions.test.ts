@@ -48,4 +48,20 @@ describe('puzzleAnalysisDimensionsForViewport', () => {
       960 + 820 + 16,
     );
   });
+
+  it('shrinks the board when viewport height is constrained', () => {
+    const dims = puzzleAnalysisDimensionsForViewport(1400, 500);
+    expect(dims.stackVertically).toBe(false);
+    expect(dims.boardWidth).toBeLessThan(480);
+  });
+
+  it('matches sidebar width to content width when stacked', () => {
+    const dims = puzzleAnalysisDimensionsForViewport(390);
+    expect(dims.layout.sidebarWidth).toBe(dims.layout.boardWidth);
+    expect(dims.stackEngineBelow).toBe(true);
+  });
+
+  it('uses side-by-side min width constant at default layout', () => {
+    expect(PUZZLE_ANALYSIS_SIDE_BY_SIDE_MIN_WIDTH).toBe(480 + 500 + 16);
+  });
 });
