@@ -57,6 +57,8 @@ export interface PuzzlePlaySurfaceProps {
   autoShowWrongMoves?: boolean;
   /** Stockfish options for refutation analysis. */
   refutationEngine?: AnalysisEngineOptions;
+  /** Play-time search depth; instant refutation cache requires the wrong line at this depth. */
+  setupCacheTargetDepth?: number;
   answerArrowColor?: string;
   /** While the next card is loading, keep the prior board visible but locked. */
   positionLocked?: boolean;
@@ -82,6 +84,7 @@ export const PuzzlePlaySurface = ({
   showRefutationOnIncorrect = false,
   autoShowWrongMoves = true,
   refutationEngine,
+  setupCacheTargetDepth,
   answerArrowColor = DEFAULT_ANSWER_ARROW_COLOR,
   positionLocked = false,
   onMissFeedbackChange,
@@ -103,7 +106,6 @@ export const PuzzlePlaySurface = ({
   } = useIncorrectMoveFeedback();
   const boardOrientationRef = useRef<'white' | 'black'>('white');
   const boardFenRef = useRef(EMPTY_BOARD_FEN);
-  const prevMissPhaseRef = useRef<MissSequencePhase | null>(null);
 
   const notifyHost = () => {
     incInteractionNum();
@@ -135,8 +137,8 @@ export const PuzzlePlaySurface = ({
     // Refutation + answer-arrow flows must run the full wrong→refutation→answer
     // sequence; the replay "retry without arrow" setting does not apply here.
     autoShowWrongMoves: useRefutation ? true : autoShowWrongMoves,
-    snapBackOnWrong: useRefutation,
     engineOptions: refutationEngine,
+    setupCacheTargetDepth,
   });
 
   const missPhase = missBoard.phase;
@@ -176,7 +178,6 @@ export const PuzzlePlaySurface = ({
     setShowAnswerArrow(false);
     setIncorrectActive(false);
     attemptMissedRef.current = false;
-    prevMissPhaseRef.current = null;
     clearCorrectMoveFeedback();
     clearIncorrectMoveFeedback();
     onMissFeedbackChange?.(null);
@@ -186,22 +187,6 @@ export const PuzzlePlaySurface = ({
     onMissFeedbackChange,
     position,
   ]);
-
-  useEffect(() => {
-    const prevPhase = prevMissPhaseRef.current;
-    prevMissPhaseRef.current = missPhase;
-    if (
-      useRefutation &&
-      incorrectActive &&
-      missPhase === 'answer' &&
-      prevPhase !== null &&
-      prevPhase !== 'answer'
-    ) {
-      // Remount when reverting to the quiz position so react-chessboard resyncs
-      // after the wrong-move / refutation overlay FENs.
-      bumpRevision();
-    }
-  }, [bumpRevision, incorrectActive, missPhase, useRefutation]);
 
   useEffect(() => {
     if (!onMissFeedbackChange) {
@@ -337,7 +322,7 @@ export const PuzzlePlaySurface = ({
         setIncorrectActive(true);
         missBoard.missSequence.startSequence(setupFen, attemptedUci);
         position.resetInteractions();
-        return false;
+        return true;
       }
 
       const revealIncorrectFeedback = () => {

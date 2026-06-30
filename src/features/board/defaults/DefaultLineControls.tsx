@@ -7,24 +7,11 @@ export const DefaultLineControls = ({
   total,
   finished,
   isUserTurn,
-  feedback,
 }: LineControlsRenderProps) => (
   <div style={rowStyle}>
     <span style={statusStyle}>
       {finished ? 'Line complete' : `Move ${moveNumber} of ${total}`}
     </span>
-    {feedback && !finished && (
-      <span
-        style={{
-          ...statusStyle,
-          color: feedback.isCorrect ? '#2e7d32' : '#c62828',
-        }}
-      >
-        {feedback.isCorrect
-          ? `Correct: ${feedback.expectedSan}`
-          : `Best was ${feedback.expectedSan}`}
-      </span>
-    )}
     {isUserTurn && !finished && <span style={hintStyle}>Your move</span>}
   </div>
 );
