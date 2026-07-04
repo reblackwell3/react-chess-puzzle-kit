@@ -8,6 +8,11 @@ export type PuzzleControlState = {
   hintUsed: boolean;
 };
 
+export type PuzzleNavigationControls = {
+  previousPuzzle?: () => void;
+  canGoPrevious: boolean;
+};
+
 export type PuzzleControlsRenderProps = {
   showHint: () => void;
   showSolution: () => void;
@@ -15,6 +20,7 @@ export type PuzzleControlsRenderProps = {
   resultStatus: PuzzleResultStatus;
   analysis: AnalysisControls;
   controlState: PuzzleControlState;
+  navigation?: PuzzleNavigationControls;
 };
 
 /** Library default hint / next / analysis / result controls (unstyled buttons). */
@@ -25,6 +31,7 @@ export const DefaultPuzzleControls = ({
   resultStatus: _resultStatus,
   analysis,
   controlState,
+  navigation,
 }: PuzzleControlsRenderProps) => {
   const control = getProgressiveHintControl({
     canShowHint: controlState.canShowHint,
@@ -34,6 +41,16 @@ export const DefaultPuzzleControls = ({
 
   return (
     <div style={rowStyle}>
+      {navigation?.previousPuzzle && (
+        <button
+          type="button"
+          onClick={navigation.previousPuzzle}
+          style={buttonStyle}
+          disabled={!navigation.canGoPrevious}
+        >
+          Previous puzzle
+        </button>
+      )}
       <button
         type="button"
         onClick={control.phase === 'hint' ? showHint : showSolution}
@@ -64,6 +81,8 @@ export const defaultRenderControls = (
   resultStatus: PuzzleResultStatus,
   analysis: AnalysisControls,
   controlState: PuzzleControlState,
+  _autoAdvance?: unknown,
+  navigation?: PuzzleNavigationControls,
 ) => (
   <DefaultPuzzleControls
     showHint={showHint}
@@ -72,6 +91,7 @@ export const defaultRenderControls = (
     resultStatus={resultStatus}
     analysis={analysis}
     controlState={controlState}
+    navigation={navigation}
   />
 );
 

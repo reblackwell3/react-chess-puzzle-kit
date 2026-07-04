@@ -32,6 +32,7 @@ import {
 import {
   defaultRenderControls,
   type PuzzleControlState,
+  type PuzzleNavigationControls,
 } from './defaults/DefaultPuzzleControls';
 import {
   PuzzlePlaySurface,
@@ -74,6 +75,7 @@ export {
 export type {
   PuzzleControlState,
   PuzzleControlsRenderProps,
+  PuzzleNavigationControls,
 } from './defaults/DefaultPuzzleControls';
 export type { PuzzleAutoAdvanceState } from './usePuzzleAutoAdvanceCountdown';
 
@@ -189,6 +191,7 @@ export interface PuzzleBoardWithControlsProps {
     analysis: AnalysisControls,
     controlState: PuzzleControlState,
     autoAdvance?: PuzzleAutoAdvanceState,
+    navigation?: PuzzleNavigationControls,
   ) => React.ReactNode;
   renderAnalysisSidebar?: (
     props: AnalysisSidebarRenderProps,
@@ -215,6 +218,10 @@ export interface PuzzleBoardWithControlsProps {
   renderAnalysisMain?: (props: AnalysisMainRenderProps) => React.ReactNode;
   /** After auto-advance or Next Puzzle, run instead of fetching the next card. */
   onNextPuzzle?: () => void;
+  /** When set, Previous puzzle runs this then reloads the prior card. */
+  onPreviousPuzzle?: () => void;
+  /** Whether the previous-puzzle control should be enabled. */
+  canGoPrevious?: boolean;
   engine?: AnalysisEngineOptions;
   /** Background multipv on the setup position for instant refutation (silent on puzzles). */
   playTimeEngine?: AnalysisEngineOptions;
@@ -270,6 +277,8 @@ export const PuzzleBoardWithControls = ({
   refutationEngine,
   answerArrowColor,
   onNextPuzzle,
+  onPreviousPuzzle,
+  canGoPrevious = false,
 }: PuzzleBoardWithControlsProps) => {
   const refutationOnIncorrect =
     showRefutationOnIncorrect ?? showAnswerArrowOnIncorrect;
@@ -639,6 +648,25 @@ export const PuzzleBoardWithControls = ({
     setPuzzleNum((prevPuzzleNum) => prevPuzzleNum + 1);
   }, [onNextPuzzle]);
 
+  const handlePreviousPuzzle = useCallback(() => {
+    if (!canGoPrevious || !onPreviousPuzzle) {
+      return;
+    }
+    onPreviousPuzzle();
+    setPuzzleNum((prevPuzzleNum) => prevPuzzleNum + 1);
+  }, [canGoPrevious, onPreviousPuzzle]);
+
+  const puzzleNavigation = useMemo<PuzzleNavigationControls | undefined>(
+    () =>
+      onPreviousPuzzle
+        ? {
+            previousPuzzle: handlePreviousPuzzle,
+            canGoPrevious,
+          }
+        : undefined,
+    [canGoPrevious, handlePreviousPuzzle, onPreviousPuzzle],
+  );
+
   const resultStatus = getResultStatus();
 
   const completionRecapSource = useMemo(
@@ -893,6 +921,7 @@ export const PuzzleBoardWithControls = ({
               },
               controlState,
               autoAdvance,
+              puzzleNavigation,
             )}
             {renderBoardFeedback && resultStatus === 'complete' && (
               <div style={puzzleControlsFeedbackStyle(controlsPlacement)}>
