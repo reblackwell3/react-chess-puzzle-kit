@@ -1,16 +1,14 @@
 const path = require('path');
 
+const coreStubPath = path.join(__dirname, 'jest/react-chess-core-stub.ts');
+
 /** @type {import('jest').Config} */
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   testMatch: ['**/*.test.ts'],
   moduleNameMapper: {
-    // Avoid loading react-chess-core dist (bundles MUI) in node tests.
-    '^react-chess-core$': path.join(
-      __dirname,
-      '../react-chess-core-2/src/features/chessboard/lastMoveArrow.ts',
-    ),
+    '^react-chess-core$': coreStubPath,
   },
   transform: {
     '^.+\\.tsx?$': [
