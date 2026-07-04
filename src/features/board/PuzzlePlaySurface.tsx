@@ -10,7 +10,7 @@ import {
   type AnalysisEngineOptions,
   type MissSequencePhase,
 } from 'react-chess-core';
-import { PuzzlePosition } from '../position/Position';
+import { PuzzlePosition, sideToMoveFromFen } from '../position/Position';
 
 const EMPTY_BOARD_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
 
@@ -19,6 +19,8 @@ export type PuzzleMissFeedback = {
   phase: MissSequencePhase | null;
   /** True while the board shows the correct-move answer arrow. */
   answerArrowVisible: boolean;
+  /** Side to move on the board FEN currently shown (miss overlay may differ from puzzle state). */
+  displaySideToMove: 'white' | 'black' | null;
 };
 
 /** Board state driven by the post-completion solution recap animation. */
@@ -55,6 +57,8 @@ export interface PuzzlePlaySurfaceProps {
   autoShowWrongMoves?: boolean;
   /** Stockfish options for refutation analysis. */
   refutationEngine?: AnalysisEngineOptions;
+  /** Play-time search depth; instant refutation cache requires the wrong line at this depth. */
+  setupCacheTargetDepth?: number;
   answerArrowColor?: string;
   /** While the next card is loading, keep the prior board visible but locked. */
   positionLocked?: boolean;
@@ -80,6 +84,7 @@ export const PuzzlePlaySurface = ({
   showRefutationOnIncorrect = false,
   autoShowWrongMoves = true,
   refutationEngine,
+  setupCacheTargetDepth,
   answerArrowColor = DEFAULT_ANSWER_ARROW_COLOR,
   positionLocked = false,
   onMissFeedbackChange,
@@ -133,6 +138,7 @@ export const PuzzlePlaySurface = ({
     // sequence; the replay "retry without arrow" setting does not apply here.
     autoShowWrongMoves: useRefutation ? true : autoShowWrongMoves,
     engineOptions: refutationEngine,
+    setupCacheTargetDepth,
   });
 
   const missPhase = missBoard.phase;
@@ -146,6 +152,27 @@ export const PuzzlePlaySurface = ({
       : transientIncorrectSquare;
   const refutationMoveSquare =
     useRefutation && incorrectActive ? missBoard.refutationMoveSquare : null;
+
+  const boardOrientation = position
+    ? (position.getPlayerColor() as 'white' | 'black')
+    : boardOrientationRef.current;
+
+  if (position) {
+    boardOrientationRef.current = boardOrientation;
+    boardFenRef.current = position.fen();
+  }
+
+  const resolvedBoardOrientation = boardOrientationRef.current;
+
+  const boardFen = boardFenRef.current;
+  const hasBoard = boardFen !== EMPTY_BOARD_FEN;
+  const isRecapping = recapBoard !== null;
+
+  const displayFen = isRecapping
+    ? recapBoard.fen
+    : useRefutation && incorrectActive
+      ? missBoard.boardPosition
+      : boardFen;
 
   useEffect(() => {
     setShowAnswerArrow(false);
@@ -170,6 +197,7 @@ export const PuzzlePlaySurface = ({
         refutationSan: missBoard.refutation.refutationSan,
         phase: missBoard.phase,
         answerArrowVisible,
+        displaySideToMove: sideToMoveFromFen(displayFen),
       });
       return;
     }
@@ -178,31 +206,24 @@ export const PuzzlePlaySurface = ({
         refutationSan: null,
         phase: null,
         answerArrowVisible: true,
+        displaySideToMove: position
+          ? sideToMoveFromFen(position.fen())
+          : null,
       });
       return;
     }
     onMissFeedbackChange(null);
   }, [
     answerArrowVisible,
+    displayFen,
     incorrectActive,
     missBoard.phase,
     missBoard.refutation.refutationSan,
     onMissFeedbackChange,
+    position,
     showAnswerArrow,
     useRefutation,
   ]);
-
-  const boardOrientation = position
-    ? (position.getPlayerColor() as 'white' | 'black')
-    : boardOrientationRef.current;
-
-  if (position) {
-    boardOrientationRef.current = boardOrientation;
-    boardFenRef.current = position.fen();
-  }
-
-  const boardFen = boardFenRef.current;
-  const hasBoard = boardFen !== EMPTY_BOARD_FEN;
 
   const simpleArrows = useMemo<[string, string, string][]>(() => {
     if (!showAnswerArrow || !position || useRefutation) {
@@ -215,19 +236,11 @@ export const PuzzlePlaySurface = ({
     return [[moveUci.slice(0, 2), moveUci.slice(2, 4), answerArrowColor]];
   }, [showAnswerArrow, position, answerArrowColor, useRefutation]);
 
-  const isRecapping = recapBoard !== null;
-
   const customArrows = isRecapping
     ? recapBoard.customArrows
     : useRefutation && incorrectActive
       ? missBoard.customArrows
       : simpleArrows;
-
-  const displayFen = isRecapping
-    ? recapBoard.fen
-    : useRefutation && incorrectActive
-      ? missBoard.boardPosition
-      : boardFen;
 
   const lastMoveUci = isRecapping
     ? recapBoard.lastMoveUci
@@ -244,6 +257,10 @@ export const PuzzlePlaySurface = ({
     !missLocked &&
     correctMoveSquare === null &&
     overlayIncorrectSquare === null;
+
+  const playerColorChar = resolvedBoardOrientation === 'white' ? 'w' : 'b';
+  const isDraggablePiece = ({ piece }: { piece: string }) =>
+    piece[0] === playerColorChar;
 
   const onPieceDrop = (
     sourceSquare: string,
@@ -278,6 +295,7 @@ export const PuzzlePlaySurface = ({
     });
     if (!guess.accepted) {
       attemptMissedRef.current = true;
+      clearCorrectMoveFeedback();
       if (!useRefutation) {
         showIncorrectMove(sourceSquare);
       }
@@ -295,10 +313,14 @@ export const PuzzlePlaySurface = ({
           targetSquare,
           piece,
         );
-        setIncorrectActive(true);
-        if (attemptedUci) {
-          missBoard.missSequence.startSequence(setupFen, attemptedUci);
+        if (!attemptedUci) {
+          showIncorrectMove(sourceSquare);
+          position.resetInteractions();
+          bumpRevision();
+          return false;
         }
+        setIncorrectActive(true);
+        missBoard.missSequence.startSequence(setupFen, attemptedUci);
         position.resetInteractions();
         return true;
       }
@@ -397,9 +419,11 @@ export const PuzzlePlaySurface = ({
       lastMoveUci={lastMoveUci}
       onPieceDrop={onPieceDrop}
       position={displayFen}
-      boardOrientation={boardOrientation}
+      boardOrientation={resolvedBoardOrientation}
       arePiecesDraggable={arePiecesDraggable}
+      isDraggablePiece={isDraggablePiece}
       areArrowsAllowed={false}
+      clickToMoveHighlight={false}
       promotionDialogVariant="modal"
       animationDuration={
         isRecapping

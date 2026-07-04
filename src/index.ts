@@ -28,14 +28,3 @@ export {
 export * from './features/position/moveHistory';
 export * from './features/position/Position';
 export * from './features/position/Traversable';
-
-import {
-  analysisBoardHighlightColors,
-  boardSquareHighlightColors,
-} from 'react-chess-core';
-
-/** @deprecated Import {@link boardSquareHighlightColors} and {@link analysisBoardHighlightColors} from `react-chess-core`. */
-export const squareHighlightColors = {
-  ...boardSquareHighlightColors,
-  ...analysisBoardHighlightColors,
-} as const;

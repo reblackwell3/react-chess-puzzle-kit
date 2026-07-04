@@ -82,12 +82,16 @@ export abstract class Position implements Traversable {
   }
 
   getSideToMove(): 'white' | 'black' {
-    return this.chess.turn() === 'w' ? 'white' : 'black';
+    return sideToMoveFromFen(this.chess.fen());
   }
 
   getCheckSquare(): string {
     return getCheckSquareFromChess(this.chess);
   }
+}
+
+export function sideToMoveFromFen(fen: string): 'white' | 'black' {
+  return fen.trim().split(/\s+/)[1] === 'b' ? 'black' : 'white';
 }
 
 export function getCheckSquareFromChess(chess: Chess): string {
@@ -160,6 +164,50 @@ export function advanceToPlayerTurn(position: PuzzlePosition): void {
       break;
     }
   }
+}
+
+/**
+ * Resume metadata from SRS may reference opponent-setup plies (e.g. index 0).
+ * Keep only solver plies so review lands on a draggable quiz index.
+ */
+export function normalizePuzzleResumeConfig(
+  initialFen: string,
+  moves: string[],
+  resume?: PuzzleResumeConfig,
+): PuzzleResumeConfig | undefined {
+  if (!resume) {
+    return undefined;
+  }
+
+  const playerIndices = playerMoveIndicesInRange(
+    initialFen,
+    moves,
+    0,
+    moves.length,
+  );
+  const playerSet = new Set(playerIndices);
+  let quizAtIndices = resume.quizAtIndices.filter((index) =>
+    playerSet.has(index),
+  );
+
+  if (quizAtIndices.length === 0) {
+    const fallback =
+      playerIndices.find((index) => index >= resume.startIndex) ??
+      playerIndices[0];
+    if (fallback === undefined) {
+      return undefined;
+    }
+    quizAtIndices = [fallback];
+  }
+
+  const startIndex =
+    quizAtIndices.find((index) => index >= resume.startIndex) ??
+    quizAtIndices[0]!;
+
+  return {
+    startIndex,
+    quizAtIndices: [...new Set(quizAtIndices)].sort((a, b) => a - b),
+  };
 }
 
 export type PuzzleResumeConfig = {
