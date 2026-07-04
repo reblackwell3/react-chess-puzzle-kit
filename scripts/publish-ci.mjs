@@ -187,6 +187,10 @@ function installDependencies() {
     if (fs.existsSync(lockPath)) {
       fs.unlinkSync(lockPath);
     }
+    const nodeModulesPath = join(root, 'node_modules');
+    if (fs.existsSync(nodeModulesPath)) {
+      fs.rmSync(nodeModulesPath, { recursive: true, force: true });
+    }
     run('npm install --ignore-scripts --no-audit --no-fund');
     return;
   }
