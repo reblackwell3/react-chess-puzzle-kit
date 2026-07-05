@@ -32,6 +32,7 @@ import {
 import {
   defaultRenderControls,
   type PuzzleControlState,
+  type PuzzleNavigationControls,
 } from './defaults/DefaultPuzzleControls';
 import {
   PuzzlePlaySurface,
@@ -74,6 +75,7 @@ export {
 export type {
   PuzzleControlState,
   PuzzleControlsRenderProps,
+  PuzzleNavigationControls,
 } from './defaults/DefaultPuzzleControls';
 export type { PuzzleAutoAdvanceState } from './usePuzzleAutoAdvanceCountdown';
 
@@ -96,6 +98,8 @@ export type BoardCaptionRenderProps = {
   answerArrowVisible?: boolean;
   /** True when the card finished after a wrong move, hint, or solution reveal. */
   completedAfterMiss?: boolean;
+  /** True when the user opened analysis before finishing (failed attempt, still in progress). */
+  analysisFailed?: boolean;
   /** True when the user requested a hint on the current card. */
   hintUsed?: boolean;
 };
@@ -173,6 +177,7 @@ export interface PuzzleBoardWithControlsProps {
       guess?: { sourceSquare: string; targetSquare: string; piece: string };
       hintRequested?: boolean;
       solutionShown?: boolean;
+      analysisOpened?: boolean;
       isCorrect?: boolean;
       isFinished?: boolean;
     }) => void;
@@ -186,6 +191,7 @@ export interface PuzzleBoardWithControlsProps {
     analysis: AnalysisControls,
     controlState: PuzzleControlState,
     autoAdvance?: PuzzleAutoAdvanceState,
+    navigation?: PuzzleNavigationControls,
   ) => React.ReactNode;
   renderAnalysisSidebar?: (
     props: AnalysisSidebarRenderProps,
@@ -212,6 +218,10 @@ export interface PuzzleBoardWithControlsProps {
   renderAnalysisMain?: (props: AnalysisMainRenderProps) => React.ReactNode;
   /** After auto-advance or Next Puzzle, run instead of fetching the next card. */
   onNextPuzzle?: () => void;
+  /** When set, Previous puzzle runs this then reloads the prior card. */
+  onPreviousPuzzle?: () => void;
+  /** Whether the previous-puzzle control should be enabled. */
+  canGoPrevious?: boolean;
   engine?: AnalysisEngineOptions;
   /** Background multipv on the setup position for instant refutation (silent on puzzles). */
   playTimeEngine?: AnalysisEngineOptions;
@@ -267,6 +277,8 @@ export const PuzzleBoardWithControls = ({
   refutationEngine,
   answerArrowColor,
   onNextPuzzle,
+  onPreviousPuzzle,
+  canGoPrevious = false,
 }: PuzzleBoardWithControlsProps) => {
   const refutationOnIncorrect =
     showRefutationOnIncorrect ?? showAnswerArrowOnIncorrect;
@@ -290,7 +302,9 @@ export const PuzzleBoardWithControls = ({
   const [completionCheckVisible, setCompletionCheckVisible] = useState(false);
   const [completionRecapActive, setCompletionRecapActive] = useState(false);
   const [completionRecapDone, setCompletionRecapDone] = useState(false);
+  const [analysisFailedAttempt, setAnalysisFailedAttempt] = useState(false);
   const completionFlowStartedRef = useRef(false);
+  const analysisFailureSentRef = useRef(false);
   const [, setInteractionNum] = useState(0);
   const solutionAnimationRef = useRef<{
     cancelled: boolean;
@@ -332,6 +346,8 @@ export const PuzzleBoardWithControls = ({
     setCompletionCheckVisible(false);
     setCompletionRecapActive(false);
     setCompletionRecapDone(false);
+    setAnalysisFailedAttempt(false);
+    analysisFailureSentRef.current = false;
     completionFlowStartedRef.current = false;
     onFetch()
       .then((data) => {
@@ -369,16 +385,24 @@ export const PuzzleBoardWithControls = ({
     guess?: { sourceSquare: string; targetSquare: string; piece: string };
     hintRequested?: boolean;
     solutionShown?: boolean;
+    analysisOpened?: boolean;
     isCorrect?: boolean;
     isFinished?: boolean;
   }) => {
     const incorrectThisFeedback =
       feedbackData.hintRequested ||
       feedbackData.solutionShown ||
+      feedbackData.analysisOpened ||
       feedbackData.isCorrect === false;
 
     if (feedbackData.hintRequested) {
       setHintUsed(true);
+      setMissedMoveIndices((prev) =>
+        uniqueIndices([...prev, feedbackData.index]),
+      );
+    }
+    if (feedbackData.analysisOpened) {
+      setAnalysisFailedAttempt(true);
       setMissedMoveIndices((prev) =>
         uniqueIndices([...prev, feedbackData.index]),
       );
@@ -624,6 +648,25 @@ export const PuzzleBoardWithControls = ({
     setPuzzleNum((prevPuzzleNum) => prevPuzzleNum + 1);
   }, [onNextPuzzle]);
 
+  const handlePreviousPuzzle = useCallback(() => {
+    if (!canGoPrevious || !onPreviousPuzzle) {
+      return;
+    }
+    onPreviousPuzzle();
+    setPuzzleNum((prevPuzzleNum) => prevPuzzleNum + 1);
+  }, [canGoPrevious, onPreviousPuzzle]);
+
+  const puzzleNavigation = useMemo<PuzzleNavigationControls | undefined>(
+    () =>
+      onPreviousPuzzle
+        ? {
+            previousPuzzle: handlePreviousPuzzle,
+            canGoPrevious,
+          }
+        : undefined,
+    [canGoPrevious, handlePreviousPuzzle, onPreviousPuzzle],
+  );
+
   const resultStatus = getResultStatus();
 
   const completionRecapSource = useMemo(
@@ -683,6 +726,25 @@ export const PuzzleBoardWithControls = ({
 
   const analysis = usePuzzleAnalysis(position, resultStatus, puzzleNum);
 
+  const handleOpenAnalysis = () => {
+    if (!analysis.canOpen || !position) {
+      return;
+    }
+
+    const finished =
+      puzzleComplete || position.isFinished() || analysis.isOpen;
+    if (!finished && !analysisFailureSentRef.current) {
+      analysisFailureSentRef.current = true;
+      handleFeedback({
+        index: position.getIndex(),
+        analysisOpened: true,
+        isCorrect: false,
+      });
+    }
+
+    analysis.openAnalysis();
+  };
+
   const shouldAutoAdvance =
     autoAdvanceOnComplete &&
     resultStatus === 'complete' &&
@@ -703,7 +765,9 @@ export const PuzzleBoardWithControls = ({
       !(hasIncorrectAttempt && showAnswerArrowOnIncorrect && !allowRetryOnIncorrect),
     canShowSolution:
       position !== null &&
-      (position.isSolutionRevealed() || !position.isFinished()),
+      (position.isSolutionRevealed() ||
+        (!position.isFinished() && hintUsed)),
+    hintUsed,
   };
   const analysisSnapshot =
     analysis.isOpen && analysis.snapshot ? analysis.snapshot : null;
@@ -840,6 +904,7 @@ export const PuzzleBoardWithControls = ({
                   answerArrowVisible: missFeedback?.answerArrowVisible ?? false,
                   completedAfterMiss,
                   hintUsed,
+                  analysisFailed: analysisFailedAttempt,
                 })}
               </div>
             )}
@@ -852,10 +917,11 @@ export const PuzzleBoardWithControls = ({
               resultStatus,
               {
                 visible: analysis.canOpen,
-                openAnalysis: analysis.openAnalysis,
+                openAnalysis: handleOpenAnalysis,
               },
               controlState,
               autoAdvance,
+              puzzleNavigation,
             )}
             {renderBoardFeedback && resultStatus === 'complete' && (
               <div style={puzzleControlsFeedbackStyle(controlsPlacement)}>

@@ -1,10 +1,16 @@
 import React from 'react';
 import { PuzzleResultStatus } from '../../analysis';
-import { AnalysisControls } from 'react-chess-core';
+import { AnalysisControls, getProgressiveHintControl } from 'react-chess-core';
 
 export type PuzzleControlState = {
   canShowHint: boolean;
   canShowSolution: boolean;
+  hintUsed: boolean;
+};
+
+export type PuzzleNavigationControls = {
+  previousPuzzle?: () => void;
+  canGoPrevious: boolean;
 };
 
 export type PuzzleControlsRenderProps = {
@@ -14,47 +20,59 @@ export type PuzzleControlsRenderProps = {
   resultStatus: PuzzleResultStatus;
   analysis: AnalysisControls;
   controlState: PuzzleControlState;
+  navigation?: PuzzleNavigationControls;
 };
-
-const isAttemptFinished = (resultStatus: PuzzleResultStatus) =>
-  resultStatus === 'complete' || resultStatus === 'incorrect';
 
 /** Library default hint / next / analysis / result controls (unstyled buttons). */
 export const DefaultPuzzleControls = ({
   showHint,
   showSolution,
   nextPuzzle,
-  resultStatus,
+  resultStatus: _resultStatus,
   analysis,
   controlState,
-}: PuzzleControlsRenderProps) => (
-  <div style={rowStyle}>
-    <button
-      type="button"
-      onClick={showHint}
-      style={buttonStyle}
-      disabled={!controlState.canShowHint}
-    >
-      Hint
-    </button>
-    <button
-      type="button"
-      onClick={showSolution}
-      style={buttonStyle}
-      disabled={!controlState.canShowSolution}
-    >
-      Show solution
-    </button>
-    <button type="button" onClick={nextPuzzle} style={buttonStyle}>
-      Next puzzle
-    </button>
-    {analysis.visible && isAttemptFinished(resultStatus) && (
-      <button type="button" onClick={analysis.openAnalysis} style={buttonStyle}>
+  navigation,
+}: PuzzleControlsRenderProps) => {
+  const control = getProgressiveHintControl({
+    canShowHint: controlState.canShowHint,
+    canShowReveal: controlState.canShowSolution,
+    revealLabel: 'Show solution',
+  });
+
+  return (
+    <div style={rowStyle}>
+      {navigation?.previousPuzzle && (
+        <button
+          type="button"
+          onClick={navigation.previousPuzzle}
+          style={buttonStyle}
+          disabled={!navigation.canGoPrevious}
+        >
+          Previous puzzle
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={control.phase === 'hint' ? showHint : showSolution}
+        style={buttonStyle}
+        disabled={control.disabled}
+      >
+        {control.label}
+      </button>
+      <button type="button" onClick={nextPuzzle} style={buttonStyle}>
+        Next puzzle
+      </button>
+      <button
+        type="button"
+        onClick={analysis.openAnalysis}
+        style={buttonStyle}
+        disabled={!analysis.visible}
+      >
         Analysis
       </button>
-    )}
-  </div>
-);
+    </div>
+  );
+};
 
 export const defaultRenderControls = (
   showHint: () => void,
@@ -63,6 +81,8 @@ export const defaultRenderControls = (
   resultStatus: PuzzleResultStatus,
   analysis: AnalysisControls,
   controlState: PuzzleControlState,
+  _autoAdvance?: unknown,
+  navigation?: PuzzleNavigationControls,
 ) => (
   <DefaultPuzzleControls
     showHint={showHint}
@@ -71,6 +91,7 @@ export const defaultRenderControls = (
     resultStatus={resultStatus}
     analysis={analysis}
     controlState={controlState}
+    navigation={navigation}
   />
 );
 
