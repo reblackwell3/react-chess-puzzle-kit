@@ -6,6 +6,7 @@ export type PuzzleControlState = {
   canShowHint: boolean;
   canShowSolution: boolean;
   hintUsed: boolean;
+  revealLabel?: string;
 };
 
 export type PuzzleNavigationControls = {
@@ -36,7 +37,7 @@ export const DefaultPuzzleControls = ({
   const control = getProgressiveHintControl({
     canShowHint: controlState.canShowHint,
     canShowReveal: controlState.canShowSolution,
-    revealLabel: 'Show solution',
+    revealLabel: controlState.revealLabel ?? 'Show move',
   });
 
   return (

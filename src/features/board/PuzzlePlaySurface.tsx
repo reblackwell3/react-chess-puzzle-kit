@@ -66,6 +66,8 @@ export interface PuzzlePlaySurfaceProps {
   onMissFeedbackChange?: (feedback: PuzzleMissFeedback | null) => void;
   /** When set, replaces the live puzzle position with the completion recap board. */
   recapBoard?: PuzzleRecapBoardState | null;
+  /** Increment to reveal the current-move answer arrow without auto-playing the line. */
+  showCurrentMoveSignal?: number;
 }
 
 /**
@@ -89,8 +91,11 @@ export const PuzzlePlaySurface = ({
   positionLocked = false,
   onMissFeedbackChange,
   recapBoard = null,
+  showCurrentMoveSignal = 0,
 }: PuzzlePlaySurfaceProps) => {
   const [showAnswerArrow, setShowAnswerArrow] = useState(false);
+  /** "Show move" hint arrow — purely visual, never wired into click-to-move. */
+  const [showHintArrow, setShowHintArrow] = useState(false);
   const [incorrectActive, setIncorrectActive] = useState(false);
   const attemptMissedRef = useRef(false);
   const { revision, bumpRevision } = useBoardRevision();
@@ -142,16 +147,20 @@ export const PuzzlePlaySurface = ({
   });
 
   const missPhase = missBoard.phase;
-  const answerArrowVisible = useRefutation
-    ? incorrectActive && missPhase === 'answer'
-    : showAnswerArrow;
+  const answerArrowVisible =
+    showAnswerArrow ||
+    (useRefutation && incorrectActive && missPhase === 'answer');
+  /** Any arrow (hint or post-miss answer) currently drawn on the board. */
+  const anyArrowVisible = showHintArrow || answerArrowVisible;
 
   const overlayIncorrectSquare =
-    useRefutation && incorrectActive
+    useRefutation && incorrectActive && !anyArrowVisible
       ? missBoard.incorrectMoveSquare
       : transientIncorrectSquare;
   const refutationMoveSquare =
-    useRefutation && incorrectActive ? missBoard.refutationMoveSquare : null;
+    useRefutation && incorrectActive && !anyArrowVisible
+      ? missBoard.refutationMoveSquare
+      : null;
 
   const boardOrientation = position
     ? (position.getPlayerColor() as 'white' | 'black')
@@ -175,7 +184,38 @@ export const PuzzlePlaySurface = ({
       : boardFen;
 
   useEffect(() => {
+    if (showCurrentMoveSignal <= 0 || !position || position.isFinished()) {
+      return;
+    }
+
+    // Show move owns the board feedback — clear miss/refutation overlays.
+    setIncorrectActive(false);
+    missBoard.missSequence.clearSequence();
+    clearCorrectMoveFeedback();
+    clearIncorrectMoveFeedback();
+    position.resetInteractions();
+    setShowHintArrow(true);
+    incInteractionNum();
+    // missSequence is a stable controller from useMissBoard; omit from deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- signal-driven reveal only
+  }, [
+    clearCorrectMoveFeedback,
+    clearIncorrectMoveFeedback,
+    incInteractionNum,
+    position,
+    showCurrentMoveSignal,
+  ]);
+
+  const puzzleMoveIndex = position?.getIndex() ?? -1;
+  useEffect(() => {
+    // Arrow is for the current quiz ply only; drop it if the line advanced.
     setShowAnswerArrow(false);
+    setShowHintArrow(false);
+  }, [puzzleMoveIndex]);
+
+  useEffect(() => {
+    setShowAnswerArrow(false);
+    setShowHintArrow(false);
     setIncorrectActive(false);
     attemptMissedRef.current = false;
     clearCorrectMoveFeedback();
@@ -201,7 +241,7 @@ export const PuzzlePlaySurface = ({
       });
       return;
     }
-    if (showAnswerArrow) {
+    if (anyArrowVisible) {
       onMissFeedbackChange({
         refutationSan: null,
         phase: null,
@@ -214,6 +254,7 @@ export const PuzzlePlaySurface = ({
     }
     onMissFeedbackChange(null);
   }, [
+    anyArrowVisible,
     answerArrowVisible,
     displayFen,
     incorrectActive,
@@ -221,12 +262,12 @@ export const PuzzlePlaySurface = ({
     missBoard.refutation.refutationSan,
     onMissFeedbackChange,
     position,
-    showAnswerArrow,
     useRefutation,
   ]);
 
   const simpleArrows = useMemo<[string, string, string][]>(() => {
-    if (!showAnswerArrow || !position || useRefutation) {
+    // Show move / answer-arrow must draw even when miss-refutation mode is enabled.
+    if (!anyArrowVisible || !position) {
       return [];
     }
     const moveUci = position.getExpectedMoveUci();
@@ -234,19 +275,24 @@ export const PuzzlePlaySurface = ({
       return [];
     }
     return [[moveUci.slice(0, 2), moveUci.slice(2, 4), answerArrowColor]];
-  }, [showAnswerArrow, position, answerArrowColor, useRefutation]);
+  }, [anyArrowVisible, position, answerArrowColor]);
 
   const customArrows = isRecapping
     ? recapBoard.customArrows
-    : useRefutation && incorrectActive
-      ? missBoard.customArrows
-      : simpleArrows;
+    : anyArrowVisible
+      ? simpleArrows
+      : useRefutation && incorrectActive
+        ? missBoard.customArrows
+        : [];
 
   const lastMoveUci = isRecapping
     ? recapBoard.lastMoveUci
-    : useRefutation && incorrectActive
-      ? missBoard.lastMoveUci
-      : (position?.getLastMoveUci() ?? null);
+    : anyArrowVisible
+      ? // Avoid stacking the opponent's previous ply on top of the shown move.
+        null
+      : useRefutation && incorrectActive
+        ? missBoard.lastMoveUci
+        : (position?.getLastMoveUci() ?? null);
 
   const missLocked = useRefutation && incorrectActive && missBoard.inputLocked;
 
@@ -394,6 +440,15 @@ export const PuzzlePlaySurface = ({
         return;
       }
 
+      if (assistedByAnswerArrow) {
+        if (!position.isFinished()) {
+          position.next();
+          boardFenRef.current = position.fen();
+        }
+        notifyHost();
+        return;
+      }
+
       if (!position.isFinished()) {
         position.next();
         boardFenRef.current = position.fen();
@@ -423,7 +478,7 @@ export const PuzzlePlaySurface = ({
       arePiecesDraggable={arePiecesDraggable}
       isDraggablePiece={isDraggablePiece}
       areArrowsAllowed={false}
-      clickToMoveHighlight={false}
+      clickToMoveHighlight={answerArrowVisible && !isRecapping}
       promotionDialogVariant="modal"
       animationDuration={
         isRecapping
