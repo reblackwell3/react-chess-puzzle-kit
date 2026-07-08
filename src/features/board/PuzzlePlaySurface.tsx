@@ -66,6 +66,8 @@ export interface PuzzlePlaySurfaceProps {
   onMissFeedbackChange?: (feedback: PuzzleMissFeedback | null) => void;
   /** When set, replaces the live puzzle position with the completion recap board. */
   recapBoard?: PuzzleRecapBoardState | null;
+  /** Increment to reveal the current-move answer arrow without auto-playing the line. */
+  showCurrentMoveSignal?: number;
 }
 
 /**
@@ -89,6 +91,7 @@ export const PuzzlePlaySurface = ({
   positionLocked = false,
   onMissFeedbackChange,
   recapBoard = null,
+  showCurrentMoveSignal = 0,
 }: PuzzlePlaySurfaceProps) => {
   const [showAnswerArrow, setShowAnswerArrow] = useState(false);
   const [incorrectActive, setIncorrectActive] = useState(false);
@@ -173,6 +176,16 @@ export const PuzzlePlaySurface = ({
     : useRefutation && incorrectActive
       ? missBoard.boardPosition
       : boardFen;
+
+  useEffect(() => {
+    if (showCurrentMoveSignal <= 0 || !position || position.isFinished()) {
+      return;
+    }
+
+    position.resetInteractions();
+    setShowAnswerArrow(true);
+    incInteractionNum();
+  }, [incInteractionNum, position, showCurrentMoveSignal]);
 
   useEffect(() => {
     setShowAnswerArrow(false);
@@ -394,6 +407,15 @@ export const PuzzlePlaySurface = ({
         return;
       }
 
+      if (assistedByAnswerArrow) {
+        if (!position.isFinished()) {
+          position.next();
+          boardFenRef.current = position.fen();
+        }
+        notifyHost();
+        return;
+      }
+
       if (!position.isFinished()) {
         position.next();
         boardFenRef.current = position.fen();
@@ -423,7 +445,7 @@ export const PuzzlePlaySurface = ({
       arePiecesDraggable={arePiecesDraggable}
       isDraggablePiece={isDraggablePiece}
       areArrowsAllowed={false}
-      clickToMoveHighlight={false}
+      clickToMoveHighlight={answerArrowVisible && !isRecapping}
       promotionDialogVariant="modal"
       animationDuration={
         isRecapping

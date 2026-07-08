@@ -13,6 +13,7 @@ import {
   AnalysisSidebarRenderProps,
   AUTO_ADVANCE_ON_COMPLETE_DELAY_MS,
   BoardCompleteCheckOverlay,
+  CORRECT_MOVE_FEEDBACK_MS,
   DEFAULT_ANALYSIS_LAYOUT,
   EngineEvaluationRenderProps,
   isAnalyzableFen,
@@ -134,6 +135,12 @@ const puzzlePositionFromFetch = (
 
 const SOLUTION_STEP_MS = 500;
 const RESUME_AUTO_STEP_MS = 500;
+const COMPLETION_OVERLAY_BUFFER_MS = 250;
+const CLEAN_SOLVE_OVERLAY_DELAY_MS =
+  CORRECT_MOVE_FEEDBACK_MS + COMPLETION_OVERLAY_BUFFER_MS;
+const MISS_COMPLETION_OVERLAY_DELAY_MS =
+  Math.max(CORRECT_MOVE_FEEDBACK_MS, PUZZLE_COMPLETION_RECAP_SETUP_MS) +
+  COMPLETION_OVERLAY_BUFFER_MS;
 
 const uniqueIndices = (indices: number[]): number[] => [...new Set(indices)];
 
@@ -181,6 +188,8 @@ export interface PuzzleBoardWithControlsProps {
       isCorrect?: boolean;
       isFinished?: boolean;
     }) => void;
+    /** Fired when the current puzzle reaches a finished state (for prefetch). */
+    onPuzzleComplete?: () => void;
   };
   /** Omit to use {@link defaultRenderControls} / {@link DefaultPuzzleControls}. */
   renderControls?: (
@@ -286,7 +295,7 @@ export const PuzzleBoardWithControls = ({
   const controlsPlacement: PuzzleControlsPlacement = stackControlsBelow
     ? 'below'
     : 'beside';
-  const { onFetch, onFetchError, onFeedback } = apiProxy;
+  const { onFetch, onFetchError, onFeedback, onPuzzleComplete } = apiProxy;
 
   const [position, setPosition] = useState<PuzzlePosition | null>(null);
   const [loadingNextPuzzle, setLoadingNextPuzzle] = useState(true);
@@ -303,7 +312,9 @@ export const PuzzleBoardWithControls = ({
   const [completionRecapActive, setCompletionRecapActive] = useState(false);
   const [completionRecapDone, setCompletionRecapDone] = useState(false);
   const [analysisFailedAttempt, setAnalysisFailedAttempt] = useState(false);
+  const [showCurrentMoveSignal, setShowCurrentMoveSignal] = useState(0);
   const completionFlowStartedRef = useRef(false);
+  const puzzleCompleteNotifiedRef = useRef(false);
   const analysisFailureSentRef = useRef(false);
   const [, setInteractionNum] = useState(0);
   const solutionAnimationRef = useRef<{
@@ -349,6 +360,7 @@ export const PuzzleBoardWithControls = ({
     setAnalysisFailedAttempt(false);
     analysisFailureSentRef.current = false;
     completionFlowStartedRef.current = false;
+    puzzleCompleteNotifiedRef.current = false;
     onFetch()
       .then((data) => {
         if (cancelled) {
@@ -524,23 +536,10 @@ export const PuzzleBoardWithControls = ({
         return;
       }
 
-      schedule(() => {
-        if (anim.cancelled) {
-          return;
-        }
-
-        playNextMove();
-
-        if (pos.isFinished()) {
-          finish();
-          return;
-        }
-
-        schedule(advance, SOLUTION_STEP_MS);
-      }, SOLUTION_STEP_MS);
+      schedule(advance, SOLUTION_STEP_MS);
     };
 
-    advance();
+    schedule(advance, SOLUTION_STEP_MS);
   };
 
   const runResumeAutoAdvance = (pos: PuzzlePosition) => {
@@ -598,6 +597,18 @@ export const PuzzleBoardWithControls = ({
     };
 
     schedule(step, RESUME_AUTO_STEP_MS);
+  };
+
+  const handleShowCurrentMove = () => {
+    if (!position || position.isFinished() || position.isSolutionRevealed()) {
+      return;
+    }
+
+    setMissedMoveIndices((prev) =>
+      uniqueIndices([...prev, position.getIndex()]),
+    );
+    setShowCurrentMoveSignal((value) => value + 1);
+    incInteractionNum();
   };
 
   const handleShowSolution = () => {
@@ -667,7 +678,35 @@ export const PuzzleBoardWithControls = ({
     [canGoPrevious, handlePreviousPuzzle, onPreviousPuzzle],
   );
 
+  const handleRevealAction = () => {
+    if (!position) {
+      return;
+    }
+
+    if (position.isSolutionRevealed()) {
+      handleShowSolution();
+      return;
+    }
+
+    handleShowCurrentMove();
+  };
+
   const resultStatus = getResultStatus();
+
+  const missFeedbackActive =
+    Boolean(missFeedback?.answerArrowVisible) ||
+    missFeedback?.phase === 'answer' ||
+    missFeedback?.phase === 'wrong' ||
+    missFeedback?.phase === 'refutation';
+
+  useEffect(() => {
+    if (resultStatus !== 'complete' || puzzleCompleteNotifiedRef.current) {
+      return;
+    }
+
+    puzzleCompleteNotifiedRef.current = true;
+    onPuzzleComplete?.();
+  }, [onPuzzleComplete, resultStatus]);
 
   const completionRecapSource = useMemo(
     () =>
@@ -702,15 +741,39 @@ export const PuzzleBoardWithControls = ({
     }
 
     completionFlowStartedRef.current = true;
-    if (missedMoveIndices.length === 0) {
-      setCompletionRecapDone(true);
-      return;
-    }
-    setCompletionCheckVisible(true);
+    const overlayDelay =
+      missedMoveIndices.length === 0
+        ? CLEAN_SOLVE_OVERLAY_DELAY_MS
+        : MISS_COMPLETION_OVERLAY_DELAY_MS;
+
+    const timer = window.setTimeout(() => {
+      setCompletionCheckVisible(true);
+      if (missedMoveIndices.length === 0) {
+        setCompletionRecapDone(true);
+      }
+    }, overlayDelay);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [loadingNextPuzzle, missedMoveIndices, resultStatus, showCompletionRecap]);
 
   useEffect(() => {
-    if (!completionCheckVisible) {
+    if (!completionCheckVisible || missedMoveIndices.length > 0) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setCompletionCheckVisible(false);
+    }, PUZZLE_COMPLETION_RECAP_SETUP_MS + COMPLETION_OVERLAY_BUFFER_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [completionCheckVisible, missedMoveIndices.length]);
+
+  useEffect(() => {
+    if (!completionCheckVisible || missedMoveIndices.length === 0) {
       return;
     }
 
@@ -722,7 +785,7 @@ export const PuzzleBoardWithControls = ({
     return () => {
       window.clearTimeout(timer);
     };
-  }, [completionCheckVisible]);
+  }, [completionCheckVisible, missedMoveIndices.length]);
 
   const analysis = usePuzzleAnalysis(position, resultStatus, puzzleNum);
 
@@ -762,11 +825,15 @@ export const PuzzleBoardWithControls = ({
       position !== null &&
       !position.isFinished() &&
       !position.isSolutionRevealed() &&
+      !missFeedbackActive &&
       !(hasIncorrectAttempt && showAnswerArrowOnIncorrect && !allowRetryOnIncorrect),
     canShowSolution:
       position !== null &&
+      !position.isFinished() &&
+      !missFeedbackActive &&
       (position.isSolutionRevealed() ||
-        (!position.isFinished() && hintUsed)),
+        (hintUsed && !position.isSolutionRevealed())),
+    revealLabel: position?.isSolutionRevealed() ? 'Show solution' : 'Show move',
     hintUsed,
   };
   const analysisSnapshot =
@@ -860,6 +927,7 @@ export const PuzzleBoardWithControls = ({
                     refutationEngine={refutationEngine ?? engine}
                     setupCacheTargetDepth={resolvedPlayTimeEngine.depth}
                     answerArrowColor={answerArrowColor}
+                    showCurrentMoveSignal={showCurrentMoveSignal}
                     positionLocked={
                       loadingNextPuzzle ||
                       completionCheckVisible ||
@@ -912,7 +980,7 @@ export const PuzzleBoardWithControls = ({
           <div style={puzzleControlsSlotStyle(controlsPlacement)}>
             {renderControls(
               handleHintRequest,
-              handleShowSolution,
+              handleRevealAction,
               handleNextPuzzle,
               resultStatus,
               {

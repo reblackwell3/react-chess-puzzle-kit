@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Box,
   IconButton,
@@ -6,6 +7,8 @@ import {
   ListItemText,
   Paper,
   Stack,
+  Tab,
+  Tabs,
   Typography,
 } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -26,6 +29,8 @@ const SIDEBAR_MAX_HEIGHT = 480;
 /** Scroll move list on narrow layouts so engine lines stay on screen. */
 const STACKED_MOVE_LIST_MAX_HEIGHT = 220;
 
+type MobileAnalysisTab = 'moves' | 'engine';
+
 export type PuzzleAnalysisSidebarProps = AnalysisSidebarRenderProps & {
   /** Stack engine lines under move history (narrow modals). */
   stackEngineBelow?: boolean;
@@ -42,6 +47,7 @@ export const PuzzleAnalysisSidebar = ({
   engineEvaluationPanel,
   stackEngineBelow = false,
 }: PuzzleAnalysisSidebarProps) => {
+  const [mobileTab, setMobileTab] = useState<MobileAnalysisTab>('moves');
   const rowBands = createPuzzleAnalysisRowBands();
 
   const enginePanel = engineEvaluationPanel ? (
@@ -123,6 +129,36 @@ export const PuzzleAnalysisSidebar = ({
     </Box>
   );
 
+  const stackedBody =
+    stackEngineBelow && enginePanel ? (
+      <>
+        <Tabs
+          value={mobileTab}
+          onChange={(_, next: MobileAnalysisTab) => setMobileTab(next)}
+          variant="fullWidth"
+          sx={{
+            minHeight: 36,
+            mb: 1,
+            '& .MuiTab-root': {
+              minHeight: 36,
+              py: 0.5,
+              fontSize: 13,
+              fontWeight: 600,
+            },
+          }}
+        >
+          <Tab value="moves" label="Moves" />
+          <Tab value="engine" label="Engine" />
+        </Tabs>
+        {mobileTab === 'moves' ? moveHistoryList : enginePanel}
+      </>
+    ) : (
+      <>
+        {moveHistoryList}
+        {!stackEngineBelow && enginePanel ? enginePanel : null}
+      </>
+    );
+
   return (
     <Paper
       variant="outlined"
@@ -184,13 +220,11 @@ export const PuzzleAnalysisSidebar = ({
           </IconButton>
         </Stack>
 
-        {stackEngineBelow && enginePanel ? (
-          <Box sx={{ mt: 1.5 }}>{enginePanel}</Box>
+        {!stackEngineBelow || !enginePanel ? (
+          <Typography variant="subtitle2" sx={{ mt: 1 }}>
+            Move history
+          </Typography>
         ) : null}
-
-        <Typography variant="subtitle2" sx={{ mt: 1 }}>
-          Move history
-        </Typography>
       </Box>
 
       <Box
@@ -204,9 +238,7 @@ export const PuzzleAnalysisSidebar = ({
           pb: 1,
         }}
       >
-        {moveHistoryList}
-
-        {!stackEngineBelow && enginePanel ? enginePanel : null}
+        {stackedBody}
       </Box>
 
       <Typography
