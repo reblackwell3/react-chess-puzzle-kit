@@ -184,6 +184,10 @@ function installDependencies() {
       'publish-ci: local file: sibling deps detected; swapping to npm and reinstalling',
     );
     rewriteFileDepsToNpm();
+    if (fs.existsSync(lockPath)) {
+      fs.unlinkSync(lockPath);
+      console.log('publish-ci: removed package-lock.json so npm resolves published siblings');
+    }
     run('npm install --ignore-scripts --no-audit --no-fund');
     return;
   }
