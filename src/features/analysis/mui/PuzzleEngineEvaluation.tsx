@@ -1,4 +1,4 @@
-import { Box, Typography } from '@mui/material';
+import { Box, ListItemButton, Typography } from '@mui/material';
 import { EngineEvaluationRenderProps } from 'react-chess-core';
 import {
   formatEvaluation,
@@ -10,6 +10,8 @@ export const PuzzleEngineEvaluation = ({
   fen,
   evaluation,
   theme,
+  selectedPvMultipv = null,
+  onSelectPvLine,
 }: EngineEvaluationRenderProps) => {
   const safePv = (
     pv: unknown,
@@ -71,19 +73,14 @@ export const PuzzleEngineEvaluation = ({
           line.pv,
           Array.isArray(line.pv) ? line.pv.length : 6,
         );
+        const pvMoves = Array.isArray(line.pv)
+          ? line.pv.filter((move): move is string => typeof move === 'string')
+          : [];
+        const isSelected = selectedPvMultipv === line.multipv;
+        const isClickable = Boolean(onSelectPvLine && pvMoves.length > 0);
 
-        return (
-          <Box
-            key={line.multipv}
-            sx={{
-              p: 1,
-              borderRadius: 1,
-              bgcolor:
-                theme === 'dark'
-                  ? 'rgba(255, 255, 255, 0.06)'
-                  : 'rgba(0, 0, 0, 0.04)',
-            }}
-          >
+        const content = (
+          <>
             <Typography
               variant="body2"
               sx={{
@@ -108,7 +105,48 @@ export const PuzzleEngineEvaluation = ({
                 {pvLabel}
               </Typography>
             ) : null}
-          </Box>
+          </>
+        );
+
+        if (!isClickable) {
+          return (
+            <Box
+              key={line.multipv}
+              sx={{
+                p: 1,
+                borderRadius: 1,
+                bgcolor:
+                  theme === 'dark'
+                    ? 'rgba(255, 255, 255, 0.06)'
+                    : 'rgba(0, 0, 0, 0.04)',
+              }}
+            >
+              {content}
+            </Box>
+          );
+        }
+
+        return (
+          <ListItemButton
+            key={line.multipv}
+            selected={isSelected}
+            onClick={() =>
+              onSelectPvLine?.(pvMoves, evaluation.depth, line.multipv)
+            }
+            sx={{
+              p: 1,
+              borderRadius: 1,
+              bgcolor: isSelected
+                ? theme === 'dark'
+                  ? 'rgba(255, 255, 255, 0.12)'
+                  : 'rgba(0, 0, 0, 0.08)'
+                : theme === 'dark'
+                  ? 'rgba(255, 255, 255, 0.06)'
+                  : 'rgba(0, 0, 0, 0.04)',
+            }}
+          >
+            {content}
+          </ListItemButton>
         );
       })}
     </Box>
