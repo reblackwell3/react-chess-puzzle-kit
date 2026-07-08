@@ -313,6 +313,8 @@ export const PuzzleBoardWithControls = ({
   const [completionRecapDone, setCompletionRecapDone] = useState(false);
   const [analysisFailedAttempt, setAnalysisFailedAttempt] = useState(false);
   const [showCurrentMoveSignal, setShowCurrentMoveSignal] = useState(0);
+  /** Hint→Show-move progression for the *current* ply only — resets each move. */
+  const [progressiveMoveUsed, setProgressiveMoveUsed] = useState(false);
   const completionFlowStartedRef = useRef(false);
   const puzzleCompleteNotifiedRef = useRef(false);
   const analysisFailureSentRef = useRef(false);
@@ -326,9 +328,11 @@ export const PuzzleBoardWithControls = ({
     timeoutIds: ReturnType<typeof setTimeout>[];
   }>({ cancelled: false, timeoutIds: [] });
 
-  const incInteractionNum = () => {
+  // Stable identity: consumed as an effect dependency in PuzzlePlaySurface —
+  // an inline function here would re-fire that effect on every render.
+  const incInteractionNum = useCallback(() => {
     setInteractionNum((prev) => prev + 1);
-  };
+  }, []);
 
   const clearSolutionAnimation = () => {
     const anim = solutionAnimationRef.current;
@@ -358,6 +362,8 @@ export const PuzzleBoardWithControls = ({
     setCompletionRecapActive(false);
     setCompletionRecapDone(false);
     setAnalysisFailedAttempt(false);
+    setShowCurrentMoveSignal(0);
+    setProgressiveMoveUsed(false);
     analysisFailureSentRef.current = false;
     completionFlowStartedRef.current = false;
     puzzleCompleteNotifiedRef.current = false;
@@ -391,6 +397,12 @@ export const PuzzleBoardWithControls = ({
       clearResumeAnimation();
     };
   }, [puzzleNum]);
+
+  /** Give each new ply a fresh Hint → Show-move progression. */
+  const currentPlyIndex = position?.getIndex() ?? -1;
+  useEffect(() => {
+    setProgressiveMoveUsed(false);
+  }, [currentPlyIndex]);
 
   const handleFeedback = (feedbackData: {
     index: number;
@@ -470,6 +482,7 @@ export const PuzzleBoardWithControls = ({
     position.recordHint();
     handleFeedback({ index: position.getIndex(), hintRequested: true });
     position.wantsHint(true);
+    setProgressiveMoveUsed(true);
     incInteractionNum();
     setTimeout(() => {
       position.resetInteractions();
@@ -611,6 +624,7 @@ export const PuzzleBoardWithControls = ({
     incInteractionNum();
   };
 
+  // Retained for possible full-solution walkthrough re-enable; progressive UI uses Show move only.
   const handleShowSolution = () => {
     if (!position) {
       return;
@@ -650,6 +664,7 @@ export const PuzzleBoardWithControls = ({
     incInteractionNum();
     runSolutionWalkthrough(position, true);
   };
+  void handleShowSolution;
 
   const handleNextPuzzle = useCallback(() => {
     if (onNextPuzzle) {
@@ -679,25 +694,19 @@ export const PuzzleBoardWithControls = ({
   );
 
   const handleRevealAction = () => {
-    if (!position) {
-      return;
-    }
-
-    if (position.isSolutionRevealed()) {
-      handleShowSolution();
-      return;
-    }
-
+    // Progressive control is hint → show current move only (never full solution).
     handleShowCurrentMove();
   };
 
   const resultStatus = getResultStatus();
 
-  const missFeedbackActive =
-    Boolean(missFeedback?.answerArrowVisible) ||
+  /** Wrong-move / refutation animation only — Show-move arrow must not lock the button. */
+  const missAnimationBlocking =
     missFeedback?.phase === 'answer' ||
     missFeedback?.phase === 'wrong' ||
     missFeedback?.phase === 'refutation';
+  const missFeedbackActive =
+    Boolean(missFeedback?.answerArrowVisible) || missAnimationBlocking;
 
   useEffect(() => {
     if (resultStatus !== 'complete' || puzzleCompleteNotifiedRef.current) {
@@ -826,14 +835,14 @@ export const PuzzleBoardWithControls = ({
       !position.isFinished() &&
       !position.isSolutionRevealed() &&
       !missFeedbackActive &&
-      !(hasIncorrectAttempt && showAnswerArrowOnIncorrect && !allowRetryOnIncorrect),
+      !progressiveMoveUsed,
     canShowSolution:
       position !== null &&
       !position.isFinished() &&
-      !missFeedbackActive &&
-      (position.isSolutionRevealed() ||
-        (hintUsed && !position.isSolutionRevealed())),
-    revealLabel: position?.isSolutionRevealed() ? 'Show solution' : 'Show move',
+      !position.isSolutionRevealed() &&
+      !missAnimationBlocking &&
+      progressiveMoveUsed,
+    revealLabel: 'Show move',
     hintUsed,
   };
   const analysisSnapshot =
