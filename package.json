@@ -57,6 +57,7 @@
     "react-chessboard": "^4.7.1"
   },
   "devDependencies": {
+    "endchess-npm-publish-ci": "^1.0.0",
     "@mui/icons-material": "^5.16.7",
     "@mui/material": "^5.16.7",
     "@chromatic-com/storybook": "^1.9.0",
