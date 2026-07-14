@@ -17,6 +17,7 @@ import {
   DEFAULT_ANALYSIS_LAYOUT,
   EngineEvaluationRenderProps,
   isAnalyzableFen,
+  MISS_MOVE_ANIMATION_MS,
   PlayTimeEngineProvider,
   ThemeProvider,
   type BoardThemeId,
@@ -121,7 +122,10 @@ export type BoardFeedbackRenderProps = {
   hintUsed?: boolean;
 };
 
-/** Apply opponent setup plies immediately so the board does not flash on load. */
+/**
+ * Resume review advances to the quiz ply immediately. Fresh puzzles stay on the
+ * stored FEN so the opponent's lead-in move can animate onto the board.
+ */
 const puzzlePositionFromFetch = (
   fen: string,
   moves: string[],
@@ -129,10 +133,14 @@ const puzzlePositionFromFetch = (
 ): PuzzlePosition => {
   const normalizedResume = normalizePuzzleResumeConfig(fen, moves, resume);
   const newPosition = new PuzzlePosition(fen, moves, normalizedResume);
-  advanceToPlayerTurn(newPosition);
+  if (normalizedResume) {
+    advanceToPlayerTurn(newPosition);
+  }
   return newPosition;
 };
 
+/** Delay before playing each opponent setup ply (matches course mistake repetition). */
+const SETUP_INTRO_DELAY_MS = 450;
 const SOLUTION_STEP_MS = 500;
 const RESUME_AUTO_STEP_MS = 500;
 const COMPLETION_OVERLAY_BUFFER_MS = 250;
@@ -315,6 +323,9 @@ export const PuzzleBoardWithControls = ({
   const [showCurrentMoveSignal, setShowCurrentMoveSignal] = useState(0);
   /** Hint→Show-move progression for the *current* ply only — resets each move. */
   const [progressiveMoveUsed, setProgressiveMoveUsed] = useState(false);
+  /** True while waiting to animate opponent setup plies onto a fresh puzzle. */
+  const [setupIntroPending, setSetupIntroPending] = useState(false);
+  const [setupIntroAnimationMs, setSetupIntroAnimationMs] = useState(0);
   const completionFlowStartedRef = useRef(false);
   const puzzleCompleteNotifiedRef = useRef(false);
   const analysisFailureSentRef = useRef(false);
@@ -364,6 +375,8 @@ export const PuzzleBoardWithControls = ({
     setAnalysisFailedAttempt(false);
     setShowCurrentMoveSignal(0);
     setProgressiveMoveUsed(false);
+    setSetupIntroPending(false);
+    setSetupIntroAnimationMs(0);
     analysisFailureSentRef.current = false;
     completionFlowStartedRef.current = false;
     puzzleCompleteNotifiedRef.current = false;
@@ -377,7 +390,16 @@ export const PuzzleBoardWithControls = ({
           setLoadingNextPuzzle(false);
           return;
         }
-        setPosition(puzzlePositionFromFetch(data.fen, data.moves, data.resume));
+        const nextPosition = puzzlePositionFromFetch(
+          data.fen,
+          data.moves,
+          data.resume,
+        );
+        setPosition(nextPosition);
+        setSetupIntroPending(
+          !nextPosition.hasResumeConfig() &&
+            nextPosition.getSideToMove() !== nextPosition.getPlayerColor(),
+        );
         requestAnimationFrame(() => {
           if (!cancelled) {
             setLoadingNextPuzzle(false);
@@ -403,6 +425,57 @@ export const PuzzleBoardWithControls = ({
   useEffect(() => {
     setProgressiveMoveUsed(false);
   }, [currentPlyIndex]);
+
+  // Animate opponent setup plies (usually the first move) onto fresh puzzles,
+  // matching course mistake-repetition lead-in timing.
+  useEffect(() => {
+    if (
+      !setupIntroPending ||
+      !position ||
+      loadingNextPuzzle ||
+      position.hasResumeConfig()
+    ) {
+      return;
+    }
+    if (position.getSideToMove() === position.getPlayerColor()) {
+      setSetupIntroPending(false);
+      return;
+    }
+
+    const id = window.setTimeout(() => {
+      if (!position.next()) {
+        setSetupIntroPending(false);
+        setSetupIntroAnimationMs(0);
+        return;
+      }
+      setSetupIntroAnimationMs(MISS_MOVE_ANIMATION_MS);
+      incInteractionNum();
+      if (
+        position.isFinished() ||
+        position.getSideToMove() === position.getPlayerColor()
+      ) {
+        setSetupIntroPending(false);
+      }
+    }, SETUP_INTRO_DELAY_MS);
+
+    return () => window.clearTimeout(id);
+  }, [
+    currentPlyIndex,
+    incInteractionNum,
+    loadingNextPuzzle,
+    position,
+    setupIntroPending,
+  ]);
+
+  useEffect(() => {
+    if (setupIntroPending || setupIntroAnimationMs === 0) {
+      return;
+    }
+    const id = window.setTimeout(() => {
+      setSetupIntroAnimationMs(0);
+    }, setupIntroAnimationMs);
+    return () => window.clearTimeout(id);
+  }, [setupIntroAnimationMs, setupIntroPending]);
 
   const handleFeedback = (feedbackData: {
     index: number;
@@ -835,12 +908,14 @@ export const PuzzleBoardWithControls = ({
       !position.isFinished() &&
       !position.isSolutionRevealed() &&
       !missFeedbackActive &&
+      !setupIntroPending &&
       !progressiveMoveUsed,
     canShowSolution:
       position !== null &&
       !position.isFinished() &&
       !position.isSolutionRevealed() &&
       !missAnimationBlocking &&
+      !setupIntroPending &&
       progressiveMoveUsed,
     revealLabel: 'Show move',
     hintUsed,
@@ -937,8 +1012,10 @@ export const PuzzleBoardWithControls = ({
                     setupCacheTargetDepth={resolvedPlayTimeEngine.depth}
                     answerArrowColor={answerArrowColor}
                     showCurrentMoveSignal={showCurrentMoveSignal}
+                    setupIntroAnimationMs={setupIntroAnimationMs}
                     positionLocked={
                       loadingNextPuzzle ||
+                      setupIntroPending ||
                       completionCheckVisible ||
                       isCompletionRecapping
                     }

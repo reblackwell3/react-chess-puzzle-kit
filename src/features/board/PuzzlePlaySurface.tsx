@@ -68,6 +68,8 @@ export interface PuzzlePlaySurfaceProps {
   recapBoard?: PuzzleRecapBoardState | null;
   /** Increment to reveal the current-move answer arrow without auto-playing the line. */
   showCurrentMoveSignal?: number;
+  /** Non-zero while the opponent setup lead-in move is sliding onto the board. */
+  setupIntroAnimationMs?: number;
 }
 
 /**
@@ -92,6 +94,7 @@ export const PuzzlePlaySurface = ({
   onMissFeedbackChange,
   recapBoard = null,
   showCurrentMoveSignal = 0,
+  setupIntroAnimationMs = 0,
 }: PuzzlePlaySurfaceProps) => {
   const [showAnswerArrow, setShowAnswerArrow] = useState(false);
   /** "Show move" hint arrow — purely visual, never wired into click-to-move. */
@@ -485,7 +488,7 @@ export const PuzzlePlaySurface = ({
           ? recapBoard.animationDuration
           : useRefutation && incorrectActive
             ? missBoard.animationDuration
-            : 0
+            : setupIntroAnimationMs
       }
     />
   ) : null;
