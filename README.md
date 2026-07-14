@@ -5,7 +5,7 @@ npm install
 npm run build
 ```
 
-Build output: `dist/` (`index.js`, `index.esm.js`, `index.d.ts`). Re-run after source changes when consuming this package via `file:../react-chess-puzzle-kit-2`.
+Build output: `dist/` (`index.js`, `index.esm.js`, `index.d.ts`). Re-run after source changes when consuming this package via `file:../react-chess-puzzle-kit`.
 
 React components for **interactive chess puzzles** and **post-puzzle analysis**, built on [react-chessboard](https://github.com/Clariity/react-chessboard) and [chess.js](https://github.com/jhlywa/chess.js). Used in production at [endchess.com](https://endchess.com).
 
@@ -27,7 +27,7 @@ Install both packages in your app:
 npm install react-chess-puzzle-kit react-chess-core
 ```
 
-Local development: `file:../react-chess-core-2` and `file:../react-chess-puzzle-kit-2` — build core first (`npm run build` in that repo), then puzzle-kit, then `npm install` in the app.
+Local development: `file:../react-chess-core` and `file:../react-chess-puzzle-kit` — build core first (`npm run build` in that repo), then puzzle-kit, then `npm install` in the app.
 
 **Board theme, `HighlightChessboard`, Stockfish hooks, and eval formatters** are exported from **`react-chess-core`**, not re-exported from puzzle-kit. Puzzle-kit covers puzzle play, analysis orchestration, and optional default analysis UI.
 
@@ -322,7 +322,7 @@ The package was renamed to **`react-chess-puzzle-kit`** (v1.0.0). Update imports
 + import { PuzzleBoardWithControls } from 'react-chess-puzzle-kit';
 ```
 
-Component export names are unchanged for now. Rename the local clone folder to `react-chess-puzzle-kit` and point `file:../react-chess-puzzle-kit-2` in consuming apps.
+Component export names are unchanged for now. Rename the local clone folder to `react-chess-puzzle-kit` and point `file:../react-chess-puzzle-kit` in consuming apps.
 
 ---
 
