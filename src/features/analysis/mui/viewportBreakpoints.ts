@@ -7,8 +7,8 @@ export const VIEWPORT = {
   tabletPortraitMin: 768,
   tabletPortraitMax: 1023,
   tabletLandscapeMin: 1024,
-  tabletLandscapeMax: 1365,
-  desktopMin: 1366,
+  tabletLandscapeMax: 1193,
+  desktopMin: 1194,
   wideDesktopMin: 1920,
   ultraWideMin: 2560,
 } as const;

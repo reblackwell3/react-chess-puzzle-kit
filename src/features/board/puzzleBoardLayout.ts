@@ -1,4 +1,5 @@
 import { CSSProperties } from 'react';
+import { VIEWPORT } from '../analysis/mui/viewportBreakpoints';
 
 /** Default pixel width for the live puzzle board (analysis uses {@link DEFAULT_ANALYSIS_LAYOUT}). */
 export const DEFAULT_PUZZLE_BOARD_WIDTH = 480;
@@ -10,7 +11,7 @@ export const PUZZLE_CONTROLS_COLUMN_WIDTH = 160;
 export const PUZZLE_BOARD_CONTROLS_GAP = 16;
 
 /** Viewports at or below this width stack controls under the board (through tablet landscape). */
-export const PUZZLE_CONTROLS_STACK_BREAKPOINT_PX = 1365;
+export const PUZZLE_CONTROLS_STACK_BREAKPOINT_PX = VIEWPORT.desktopMin - 1;
 
 /** Horizontal space taken by the controls column when it sits beside the board. */
 export const PUZZLE_CONTROLS_BESIDE_RESERVE_PX =
