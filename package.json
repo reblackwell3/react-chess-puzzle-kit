@@ -1,6 +1,6 @@
 {
   "name": "react-chess-puzzle-kit",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "React chess puzzle kit: play, controls, analysis, and browser Stockfish for endchess.training and other apps",
   "license": "MIT",
   "author": "Robert Blackwell",
