@@ -9,6 +9,8 @@ import {
   DEFAULT_ANSWER_ARROW_COLOR,
   type AnalysisEngineOptions,
   type MissSequencePhase,
+  type OnRefutationResolved,
+  type ResolveKnownRefutation,
 } from 'react-chess-core';
 import { PuzzlePosition, sideToMoveFromFen } from '../position/Position';
 
@@ -59,6 +61,10 @@ export interface PuzzlePlaySurfaceProps {
   refutationEngine?: AnalysisEngineOptions;
   /** Play-time search depth; instant refutation cache requires the wrong line at this depth. */
   setupCacheTargetDepth?: number;
+  /** Fires when the engine (not a cached refutation) resolves a refutation. */
+  onRefutationResolved?: OnRefutationResolved;
+  /** Async lookup of a stored refutation (e.g. backend cache). */
+  resolveKnownRefutation?: ResolveKnownRefutation;
   answerArrowColor?: string;
   /** While the next card is loading, keep the prior board visible but locked. */
   positionLocked?: boolean;
@@ -89,6 +95,8 @@ export const PuzzlePlaySurface = ({
   autoShowWrongMoves = true,
   refutationEngine,
   setupCacheTargetDepth,
+  onRefutationResolved,
+  resolveKnownRefutation,
   answerArrowColor = DEFAULT_ANSWER_ARROW_COLOR,
   positionLocked = false,
   onMissFeedbackChange,
@@ -147,6 +155,8 @@ export const PuzzlePlaySurface = ({
     autoShowWrongMoves: useRefutation ? true : autoShowWrongMoves,
     engineOptions: refutationEngine,
     setupCacheTargetDepth,
+    onRefutationResolved,
+    resolveKnownRefutation,
   });
 
   const missPhase = missBoard.phase;

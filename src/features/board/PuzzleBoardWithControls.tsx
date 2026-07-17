@@ -20,7 +20,12 @@ import {
   MISS_MOVE_ANIMATION_MS,
   PlayTimeEngineProvider,
   ThemeProvider,
+  usePlayTimeSeed,
   type BoardThemeId,
+  type EngineEvaluation,
+  type GetPlayTimeSeed,
+  type OnRefutationResolved,
+  type ResolveKnownRefutation,
 } from 'react-chess-core';
 import {
   usePuzzleAutoAdvanceCountdown,
@@ -262,8 +267,22 @@ export interface PuzzleBoardWithControlsProps {
   autoShowWrongMoves?: boolean;
   /** Stockfish options for refutation analysis (requires scriptUrl when not using AnalysisEngineProvider). */
   refutationEngine?: AnalysisEngineOptions;
+  /** Backend engine cache hooks (fetch seeds, persist completed analysis). */
+  engineCache?: PuzzleEngineCache;
   answerArrowColor?: string;
 }
+
+/** Host-provided backend cache adapter; the kit stays HTTP-free. */
+export type PuzzleEngineCache = {
+  /** Cached play-time evaluation lookup for a setup FEN. */
+  getSeed?: GetPlayTimeSeed;
+  /** Persist a locally computed play-time evaluation. */
+  onEvaluationComplete?: (evaluation: EngineEvaluation, fen: string) => void;
+  /** Cached refutation lookup for (setup FEN, wrong move). */
+  resolveKnownRefutation?: ResolveKnownRefutation;
+  /** Persist an engine-resolved refutation. */
+  onRefutationResolved?: OnRefutationResolved;
+};
 
 export const PuzzleBoardWithControls = ({
   theme,
@@ -292,6 +311,7 @@ export const PuzzleBoardWithControls = ({
   showRefutationOnIncorrect,
   autoShowWrongMoves = true,
   refutationEngine,
+  engineCache,
   answerArrowColor,
   onNextPuzzle,
   onPreviousPuzzle,
@@ -935,6 +955,11 @@ export const PuzzleBoardWithControls = ({
     }),
     [engine?.scriptUrl, playTimeEngine],
   );
+  const { seedEvaluation, seedPending } = usePlayTimeSeed(
+    setupFen,
+    playTimeEnabled,
+    engineCache?.getSeed,
+  );
   const resolvedAnalysisBoardWidth =
     analysisBoardWidth ?? analysisLayout.boardWidth;
 
@@ -993,6 +1018,9 @@ export const PuzzleBoardWithControls = ({
               fen={setupFen}
               enabled={playTimeEnabled}
               options={resolvedPlayTimeEngine}
+              seedEvaluation={seedEvaluation}
+              seedPending={seedPending}
+              onEvaluationComplete={engineCache?.onEvaluationComplete}
             >
               {renderAboveBoard?.({ fen: setupFen })}
               <div style={puzzleBoardSlotWrapperStyle()}>
@@ -1010,6 +1038,8 @@ export const PuzzleBoardWithControls = ({
                     autoShowWrongMoves={autoShowWrongMoves}
                     refutationEngine={refutationEngine ?? engine}
                     setupCacheTargetDepth={resolvedPlayTimeEngine.depth}
+                    onRefutationResolved={engineCache?.onRefutationResolved}
+                    resolveKnownRefutation={engineCache?.resolveKnownRefutation}
                     answerArrowColor={answerArrowColor}
                     showCurrentMoveSignal={showCurrentMoveSignal}
                     setupIntroAnimationMs={setupIntroAnimationMs}
