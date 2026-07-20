@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { PUZZLE_CONTROLS_STACK_BREAKPOINT_PX } from './puzzleBoardLayout';
 
-const stackControlsQuery = `(max-width: ${PUZZLE_CONTROLS_STACK_BREAKPOINT_PX}px)`;
+/** Stack controls in portrait; place them beside the board in landscape. */
+const stackControlsQuery = '(orientation: portrait)';
 
 const readStackControlsBelow = (): boolean => {
   if (typeof window === 'undefined') {
