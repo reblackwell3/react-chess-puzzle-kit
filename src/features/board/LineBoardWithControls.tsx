@@ -9,6 +9,7 @@ import {
   ThemeProvider,
   useCorrectMoveFeedback,
   useIncorrectMoveFeedback,
+  usePlayTimeSeed,
   type AnalysisEngineOptions,
   type BoardThemeId,
 } from 'react-chess-core';
@@ -23,6 +24,7 @@ import {
 } from './puzzleBoardLayout';
 import { useStackPuzzleControlsBelow } from './useStackPuzzleControlsBelow';
 import { defaultRenderLineControls } from './defaults/DefaultLineControls';
+import type { PuzzleEngineCache } from './PuzzleBoardWithControls';
 
 export type LineTrainSide = 'w' | 'b';
 
@@ -71,6 +73,11 @@ export interface LineBoardWithControlsProps {
   renderAboveBoard?: (props: { fen: string }) => React.ReactNode;
   /** Stockfish options when {@link renderAboveBoard} is set. */
   playTimeEngine?: AnalysisEngineOptions;
+  /** Backend engine-cache adapter for the eval bar / play-time MultiPV. */
+  engineCache?: Pick<
+    PuzzleEngineCache,
+    'getSeed' | 'onEvaluationComplete'
+  >;
   boardWidth?: number;
   /** Delay before auto-playing each opponent move (ms). */
   opponentMoveDelayMs?: number;
@@ -100,6 +107,7 @@ export const LineBoardWithControls = ({
   renderControls = defaultRenderLineControls,
   renderAboveBoard,
   playTimeEngine,
+  engineCache,
   boardWidth = DEFAULT_PUZZLE_BOARD_WIDTH,
   opponentMoveDelayMs = DEFAULT_OPPONENT_MOVE_DELAY_MS,
 }: LineBoardWithControlsProps) => {
@@ -255,6 +263,11 @@ export const LineBoardWithControls = ({
     ? 'below'
     : 'beside';
   const playTimeEnabled = isAnalyzableFen(boardFen);
+  const { seedEvaluation, seedPending } = usePlayTimeSeed(
+    boardFen,
+    Boolean(renderAboveBoard) && playTimeEnabled,
+    engineCache?.getSeed,
+  );
   const boardColumn = (
     <>
       {renderAboveBoard?.({ fen: boardFen })}
@@ -283,6 +296,9 @@ export const LineBoardWithControls = ({
               fen={boardFen}
               enabled={playTimeEnabled}
               options={playTimeEngine}
+              seedEvaluation={seedEvaluation}
+              seedPending={seedPending}
+              onEvaluationComplete={engineCache?.onEvaluationComplete}
             >
               {boardColumn}
             </PlayTimeEngineProvider>
