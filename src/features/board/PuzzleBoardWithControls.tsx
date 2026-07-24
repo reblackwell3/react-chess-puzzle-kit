@@ -249,7 +249,11 @@ export interface PuzzleBoardWithControlsProps {
   playTimeEngine?: AnalysisEngineOptions;
   /** After a clean solve (no wrong move, hint, or solution reveal), load the next card. */
   autoAdvanceOnComplete?: boolean;
-  /** With {@link autoAdvanceOnComplete}, also advance after finishing following a miss or hint. */
+  /**
+   * With {@link autoAdvanceOnComplete}, also advance after finishing following a
+   * miss or hint. Answer-arrow recovery still requires dragging the correct move;
+   * this only controls whether that finished attempt auto-advances.
+   */
   autoAdvanceOnCompleteAfterIncorrect?: boolean;
   /** Delay before auto-loading the next card (defaults to {@link AUTO_ADVANCE_ON_COMPLETE_DELAY_MS}). */
   autoAdvanceOnCompleteDelayMs?: number;
@@ -346,9 +350,20 @@ export const PuzzleBoardWithControls = ({
   /** True while waiting to animate opponent setup plies onto a fresh puzzle. */
   const [setupIntroPending, setSetupIntroPending] = useState(false);
   const [setupIntroAnimationMs, setSetupIntroAnimationMs] = useState(0);
+  /** True while auto-playing the remaining solution (Show solution walkthrough). */
+  const [solutionWalkthroughActive, setSolutionWalkthroughActive] =
+    useState(false);
   const completionFlowStartedRef = useRef(false);
   const puzzleCompleteNotifiedRef = useRef(false);
   const analysisFailureSentRef = useRef(false);
+  /** Ensures we only emit one terminal fail for Next abandon / walkthrough finish. */
+  const failedAttemptFinishedRef = useRef(false);
+  const positionRef = useRef(position);
+  positionRef.current = position;
+  const puzzleCompleteRef = useRef(puzzleComplete);
+  puzzleCompleteRef.current = puzzleComplete;
+  const hasIncorrectAttemptRef = useRef(hasIncorrectAttempt);
+  hasIncorrectAttemptRef.current = hasIncorrectAttempt;
   const [, setInteractionNum] = useState(0);
   const solutionAnimationRef = useRef<{
     cancelled: boolean;
@@ -397,9 +412,11 @@ export const PuzzleBoardWithControls = ({
     setProgressiveMoveUsed(false);
     setSetupIntroPending(false);
     setSetupIntroAnimationMs(0);
+    setSolutionWalkthroughActive(false);
     analysisFailureSentRef.current = false;
     completionFlowStartedRef.current = false;
     puzzleCompleteNotifiedRef.current = false;
+    failedAttemptFinishedRef.current = false;
     onFetch()
       .then((data) => {
         if (cancelled) {
@@ -538,6 +555,7 @@ export const PuzzleBoardWithControls = ({
     }
     if (feedbackData.isFinished) {
       setPuzzleComplete(true);
+      failedAttemptFinishedRef.current = true;
       setCompletedAfterMiss(
         (prev) =>
           prev ||
@@ -588,6 +606,7 @@ export const PuzzleBoardWithControls = ({
     emitFinishFeedback: boolean,
   ) => {
     clearSolutionAnimation();
+    setSolutionWalkthroughActive(true);
     const anim = {
       cancelled: false,
       timeoutIds: [] as ReturnType<typeof setTimeout>[],
@@ -605,6 +624,7 @@ export const PuzzleBoardWithControls = ({
     };
 
     const finish = () => {
+      setSolutionWalkthroughActive(false);
       setPuzzleComplete(true);
       if (emitFinishFeedback) {
         handleFeedback({
@@ -646,6 +666,36 @@ export const PuzzleBoardWithControls = ({
     };
 
     schedule(advance, SOLUTION_STEP_MS);
+  };
+
+  /** Reveal + auto-play remaining plies from the current index (miss or Show solution). */
+  const startSolutionReplayFromCurrent = (pos: PuzzlePosition) => {
+    if (pos.isFinished() || pos.isSolutionRevealed()) {
+      return;
+    }
+
+    setMissFeedback(null);
+    pos.recordSolutionShown();
+    pos.setSolutionRevealed(true);
+    pos.wantsHint(false);
+    setMissedMoveIndices((prev) =>
+      uniqueIndices([
+        ...prev,
+        ...playerMoveIndicesInRange(
+          pos.getInitialFen(),
+          pos.getSolutionMoves(),
+          pos.getIndex(),
+          pos.getSolutionMoves().length,
+        ),
+      ]),
+    );
+    handleFeedback({
+      index: pos.getIndex(),
+      solutionShown: true,
+      isCorrect: false,
+    });
+    incInteractionNum();
+    runSolutionWalkthrough(pos, true);
   };
 
   const runResumeAutoAdvance = (pos: PuzzlePosition) => {
@@ -726,6 +776,7 @@ export const PuzzleBoardWithControls = ({
     if (position.isSolutionRevealed()) {
       position.replaySolution();
       setPuzzleComplete(false);
+      failedAttemptFinishedRef.current = false;
       incInteractionNum();
       runSolutionWalkthrough(position, false);
       return;
@@ -735,37 +786,35 @@ export const PuzzleBoardWithControls = ({
       return;
     }
 
-    position.recordSolutionShown();
-    position.setSolutionRevealed(true);
-    position.wantsHint(false);
-    setMissedMoveIndices((prev) =>
-      uniqueIndices([
-        ...prev,
-        ...playerMoveIndicesInRange(
-          position.getInitialFen(),
-          position.getSolutionMoves(),
-          position.getIndex(),
-          position.getSolutionMoves().length,
-        ),
-      ]),
-    );
-    handleFeedback({
-      index: position.getIndex(),
-      solutionShown: true,
-      isCorrect: false,
-    });
-    incInteractionNum();
-    runSolutionWalkthrough(position, true);
+    startSolutionReplayFromCurrent(position);
   };
   void handleShowSolution;
 
   const handleNextPuzzle = useCallback(() => {
+    const pos = positionRef.current;
+    if (
+      pos &&
+      !puzzleCompleteRef.current &&
+      !pos.isFinished() &&
+      hasIncorrectAttemptRef.current &&
+      !failedAttemptFinishedRef.current
+    ) {
+      // Leaving mid-miss (manual Next): mark failed so the host can grade.
+      failedAttemptFinishedRef.current = true;
+      setPuzzleComplete(true);
+      setCompletedAfterMiss(true);
+      onFeedback({
+        index: pos.getIndex(),
+        isCorrect: false,
+        isFinished: true,
+      });
+    }
     if (onNextPuzzle) {
       onNextPuzzle();
       return;
     }
     setPuzzleNum((prevPuzzleNum) => prevPuzzleNum + 1);
-  }, [onNextPuzzle]);
+  }, [onFeedback, onNextPuzzle]);
 
   const handlePreviousPuzzle = useCallback(() => {
     if (!canGoPrevious || !onPreviousPuzzle) {
@@ -842,15 +891,18 @@ export const PuzzleBoardWithControls = ({
       return;
     }
 
-    completionFlowStartedRef.current = true;
+    // Latch only when the timer commits — Strict Mode remount clears the timer
+    // in cleanup; latching earlier would permanently skip the check/recap.
+    const missedCount = missedMoveIndices.length;
     const overlayDelay =
-      missedMoveIndices.length === 0
+      missedCount === 0
         ? CLEAN_SOLVE_OVERLAY_DELAY_MS
         : MISS_COMPLETION_OVERLAY_DELAY_MS;
 
     const timer = window.setTimeout(() => {
+      completionFlowStartedRef.current = true;
       setCompletionCheckVisible(true);
-      if (missedMoveIndices.length === 0) {
+      if (missedCount === 0) {
         setCompletionRecapDone(true);
       }
     }, overlayDelay);
@@ -1042,12 +1094,14 @@ export const PuzzleBoardWithControls = ({
                     resolveKnownRefutation={engineCache?.resolveKnownRefutation}
                     answerArrowColor={answerArrowColor}
                     showCurrentMoveSignal={showCurrentMoveSignal}
+                    solutionWalkthroughActive={solutionWalkthroughActive}
                     setupIntroAnimationMs={setupIntroAnimationMs}
                     positionLocked={
                       loadingNextPuzzle ||
                       setupIntroPending ||
                       completionCheckVisible ||
-                      isCompletionRecapping
+                      isCompletionRecapping ||
+                      solutionWalkthroughActive
                     }
                     onMissFeedbackChange={setMissFeedback}
                     recapBoard={

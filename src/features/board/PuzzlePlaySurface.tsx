@@ -74,6 +74,8 @@ export interface PuzzlePlaySurfaceProps {
   recapBoard?: PuzzleRecapBoardState | null;
   /** Increment to reveal the current-move answer arrow without auto-playing the line. */
   showCurrentMoveSignal?: number;
+  /** When true, dismiss miss/refutation overlays so the solution walkthrough owns the board. */
+  solutionWalkthroughActive?: boolean;
   /** Non-zero while the opponent setup lead-in move is sliding onto the board. */
   setupIntroAnimationMs?: number;
 }
@@ -102,6 +104,7 @@ export const PuzzlePlaySurface = ({
   onMissFeedbackChange,
   recapBoard = null,
   showCurrentMoveSignal = 0,
+  solutionWalkthroughActive = false,
   setupIntroAnimationMs = 0,
 }: PuzzlePlaySurfaceProps) => {
   const [showAnswerArrow, setShowAnswerArrow] = useState(false);
@@ -217,6 +220,27 @@ export const PuzzlePlaySurface = ({
     incInteractionNum,
     position,
     showCurrentMoveSignal,
+  ]);
+
+  useEffect(() => {
+    if (!solutionWalkthroughActive) {
+      return;
+    }
+
+    setIncorrectActive(false);
+    setShowAnswerArrow(false);
+    setShowHintArrow(false);
+    missBoard.missSequence.clearSequence();
+    clearCorrectMoveFeedback();
+    clearIncorrectMoveFeedback();
+    onMissFeedbackChange?.(null);
+    // missSequence is a stable controller from useMissBoard; omit from deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- walkthrough owns the board
+  }, [
+    clearCorrectMoveFeedback,
+    clearIncorrectMoveFeedback,
+    onMissFeedbackChange,
+    solutionWalkthroughActive,
   ]);
 
   const puzzleMoveIndex = position?.getIndex() ?? -1;
