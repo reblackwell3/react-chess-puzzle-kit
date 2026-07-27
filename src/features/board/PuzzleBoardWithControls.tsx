@@ -31,6 +31,7 @@ import {
   usePuzzleAutoAdvanceCountdown,
   type PuzzleAutoAdvanceState,
 } from './usePuzzleAutoAdvanceCountdown';
+import { usePuzzleElapsedTimer } from './usePuzzleElapsedTimer';
 import {
   PUZZLE_COMPLETION_RECAP_SETUP_MS,
   usePuzzleCompletionRecap,
@@ -91,6 +92,8 @@ export type BoardCaptionRenderProps = {
   sideToMove: 'white' | 'black' | null;
   /** Side the user is solving for; null while loading */
   playerColor: 'white' | 'black' | null;
+  /** Whole seconds elapsed since the current puzzle became playable. */
+  elapsedSeconds: number;
   /** True after a wrong guess, hint, or solution reveal on the current card. */
   incorrectAttempt?: boolean;
   /** True when the current card is finished. */
@@ -841,6 +844,13 @@ export const PuzzleBoardWithControls = ({
   };
 
   const resultStatus = getResultStatus();
+  const elapsedSeconds = usePuzzleElapsedTimer(
+    Boolean(position) &&
+      !loadingNextPuzzle &&
+      !setupIntroPending &&
+      resultStatus !== 'complete',
+    puzzleNum,
+  );
 
   /** Wrong-move / refutation animation only — Show-move arrow must not lock the button. */
   const missAnimationBlocking =
@@ -1134,6 +1144,7 @@ export const PuzzleBoardWithControls = ({
                   playerColor: position
                     ? (position.getPlayerColor() as 'white' | 'black')
                     : null,
+                  elapsedSeconds,
                   incorrectAttempt: resultStatus === 'incorrect',
                   complete: resultStatus === 'complete',
                   cleanSolve: !hasIncorrectAttempt,
