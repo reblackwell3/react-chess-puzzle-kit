@@ -25,7 +25,11 @@ export default [
       peerDepsExternal(),
       resolve(),
       commonjs(),
-      typescript({ useTsconfigDeclarationDir: true, clean: true }),
+      typescript({
+        tsconfig: "tsconfig.build.json",
+        useTsconfigDeclarationDir: true,
+        clean: true,
+      }),
     ],
     external: [
       'react',

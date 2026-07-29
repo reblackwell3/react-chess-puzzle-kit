@@ -13,6 +13,7 @@ import {
   type ResolveKnownRefutation,
 } from 'react-chess-core';
 import { PuzzlePosition, sideToMoveFromFen } from '../position/Position';
+import { resolvePostCorrectContinue } from './postCorrectContinue';
 
 const EMPTY_BOARD_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
 
@@ -47,6 +48,12 @@ export interface PuzzlePlaySurfaceProps {
   boardWidth: number;
   /** After a correct move in resume review, auto-show intervening plies. */
   onResumeCorrect?: (position: PuzzlePosition) => void;
+  /**
+   * Resume/review only: after answer-arrow recovery, auto-play the rest of the
+   * segment (including later quiz plies) and finish as failed. Ordinary puzzles
+   * ignore this and only auto-reply the opponent ply.
+   */
+  onAssistedRecoveryContinue?: (position: PuzzlePosition) => void;
   /** After a wrong guess, play the correct move instead of allowing retries. */
   revealAnswerOnIncorrect?: boolean;
   /** After a wrong guess, show an arrow to the correct square. */
@@ -90,6 +97,7 @@ export const PuzzlePlaySurface = ({
   incInteractionNum,
   boardWidth,
   onResumeCorrect,
+  onAssistedRecoveryContinue,
   revealAnswerOnIncorrect = false,
   showAnswerArrowOnIncorrect = false,
   allowRetryOnIncorrect = true,
@@ -472,17 +480,21 @@ export const PuzzlePlaySurface = ({
         return;
       }
 
-      if (position.hasResumeConfig()) {
-        onResumeCorrect?.(position);
+      const continueMode = resolvePostCorrectContinue({
+        assistedByAnswerArrow,
+        hasResumeConfig: position.hasResumeConfig(),
+        onAssistedRecoveryContinue,
+      });
+
+      // Resume/review assisted miss: play out the segment so auto-next can run.
+      // Ordinary /puzzles (and clean corrects): one opponent auto-reply only.
+      if (continueMode === 'assisted-recovery') {
+        onAssistedRecoveryContinue?.(position);
         return;
       }
 
-      if (assistedByAnswerArrow) {
-        if (!position.isFinished()) {
-          position.next();
-          boardFenRef.current = position.fen();
-        }
-        notifyHost();
+      if (continueMode === 'resume-auto-advance') {
+        onResumeCorrect?.(position);
         return;
       }
 

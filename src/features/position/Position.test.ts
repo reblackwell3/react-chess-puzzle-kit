@@ -3,6 +3,7 @@ import {
   applyUciMove,
   advanceToPlayerTurn,
   normalizePuzzleResumeConfig,
+  puzzlePositionFromFetch,
   PuzzlePosition,
   sideToMoveFromFen,
 } from './Position';
@@ -135,21 +136,22 @@ describe('PuzzlePosition resume review', () => {
     ).toBe(true);
   });
 
-  it('auto-advances through non-quiz plies after a correct quiz move', () => {
+  it('finishes at the segment boundary before the next quiz card', () => {
     const position = new PuzzlePosition(DUAL_CHECKMATE_FEN, DUAL_CHECKMATE_MOVES, {
       startIndex: 1,
-      quizAtIndices: [1, 5],
+      endIndex: 5,
+      quizAtIndices: [1],
     });
 
     expect(position.tryGuess('a7', 'f7', 'Q').accepted).toBe(true);
     position.next();
 
-    while (!position.isFinished() && !position.isQuizIndex()) {
+    while (!position.isFinished()) {
       expect(position.next()).toBe(true);
     }
 
     expect(position.getIndex()).toBe(5);
-    expect(position.isQuizIndex()).toBe(true);
+    expect(position.isQuizIndex()).toBe(false);
   });
 
   it('opens resume review on the solver side when metadata starts on an opponent ply', () => {
@@ -229,6 +231,7 @@ describe('normalizePuzzleResumeConfig YQSzL', () => {
       }),
     ).toEqual({
       startIndex: 1,
+      endIndex: 4,
       quizAtIndices: [1],
     });
   });
@@ -244,6 +247,55 @@ describe('normalizePuzzleResumeConfig YQSzL', () => {
     expect(position.getIndex()).toBe(1);
     expect(position.getSideToMove()).toBe('black');
     expect(position.getPlayerColor()).toBe('black');
+    expect(position.isQuizIndex()).toBe(true);
+  });
+});
+
+describe('puzzlePositionFromFetch', () => {
+  const setupFen =
+    'r1bq1rk1/pp3pp1/1nnbp2p/2p5/3P4/2P1B3/PPB1NPPP/RN1Q1RK1 b - - 2 11';
+  const setupMoves = ['b6c4', 'd1d3', 'f7f5', 'd3c4'];
+
+  it('leaves fresh puzzles on the stored FEN for setup intro', () => {
+    const position = puzzlePositionFromFetch(setupFen, setupMoves);
+
+    expect(position.getIndex()).toBe(0);
+    expect(position.getSideToMove()).toBe('black');
+    expect(position.getPlayerColor()).toBe('white');
+    expect(position.hasResumeConfig()).toBe(false);
+  });
+
+  it('lands one ply early on resume so the opponent lead-in can animate', () => {
+    const position = puzzlePositionFromFetch(setupFen, setupMoves, {
+      startIndex: 0,
+      quizAtIndices: [0],
+    });
+
+    expect(position.getIndex()).toBe(0);
+    expect(position.getSideToMove()).toBe('black');
+    expect(position.getPlayerColor()).toBe('white');
+    expect(position.isQuizIndex()).toBe(false);
+
+    expect(position.next()).toBe(true);
+    expect(position.getIndex()).toBe(1);
+    expect(position.getSideToMove()).toBe('white');
+    expect(position.isQuizIndex()).toBe(true);
+  });
+
+  it('animates into a mid-line resume quiz after the preceding opponent ply', () => {
+    const position = puzzlePositionFromFetch(YQSZL_FEN, YQSZL_MOVES, {
+      startIndex: 3,
+      endIndex: 4,
+      quizAtIndices: [3],
+    });
+
+    expect(position.getIndex()).toBe(2);
+    expect(position.getSideToMove()).toBe('white');
+    expect(position.isQuizIndex()).toBe(false);
+
+    expect(position.next()).toBe(true);
+    expect(position.getIndex()).toBe(3);
+    expect(position.getSideToMove()).toBe('black');
     expect(position.isQuizIndex()).toBe(true);
   });
 });

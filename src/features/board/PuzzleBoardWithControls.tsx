@@ -59,11 +59,11 @@ import {
 } from './puzzleBoardLayout';
 import { useStackPuzzleControlsBelow } from './useStackPuzzleControlsBelow';
 import {
-  advanceToPlayerTurn,
-  normalizePuzzleResumeConfig,
   playerMoveIndicesInRange,
+  puzzlePositionFromFetch,
   PuzzlePosition,
 } from '../position/Position';
+export { puzzlePositionFromFetch } from '../position/Position';
 export type { PuzzleMoveRecord } from '../position/moveHistory';
 export type {
   AnalysisContainerRenderProps,
@@ -130,23 +130,6 @@ export type BoardFeedbackRenderProps = {
   hintUsed?: boolean;
 };
 
-/**
- * Resume review advances to the quiz ply immediately. Fresh puzzles stay on the
- * stored FEN so the opponent's lead-in move can animate onto the board.
- */
-const puzzlePositionFromFetch = (
-  fen: string,
-  moves: string[],
-  resume?: PuzzleFetchResult['resume'],
-): PuzzlePosition => {
-  const normalizedResume = normalizePuzzleResumeConfig(fen, moves, resume);
-  const newPosition = new PuzzlePosition(fen, moves, normalizedResume);
-  if (normalizedResume) {
-    advanceToPlayerTurn(newPosition);
-  }
-  return newPosition;
-};
-
 /** Delay before playing each opponent setup ply (matches course mistake repetition). */
 const SETUP_INTRO_DELAY_MS = 450;
 const SOLUTION_STEP_MS = 500;
@@ -184,6 +167,7 @@ export type PuzzleFetchResult = {
   moves: string[];
   resume?: {
     startIndex: number;
+    endIndex?: number;
     quizAtIndices: number[];
   };
 };
@@ -437,8 +421,7 @@ export const PuzzleBoardWithControls = ({
         );
         setPosition(nextPosition);
         setSetupIntroPending(
-          !nextPosition.hasResumeConfig() &&
-            nextPosition.getSideToMove() !== nextPosition.getPlayerColor(),
+          nextPosition.getSideToMove() !== nextPosition.getPlayerColor(),
         );
         requestAnimationFrame(() => {
           if (!cancelled) {
@@ -466,15 +449,10 @@ export const PuzzleBoardWithControls = ({
     setProgressiveMoveUsed(false);
   }, [currentPlyIndex]);
 
-  // Animate opponent setup plies (usually the first move) onto fresh puzzles,
-  // matching course mistake-repetition lead-in timing.
+  // Animate opponent setup plies (usually the first move) onto fresh puzzles
+  // and resume/review cards, matching course mistake-repetition lead-in timing.
   useEffect(() => {
-    if (
-      !setupIntroPending ||
-      !position ||
-      loadingNextPuzzle ||
-      position.hasResumeConfig()
-    ) {
+    if (!setupIntroPending || !position || loadingNextPuzzle) {
       return;
     }
     if (position.getSideToMove() === position.getPlayerColor()) {
@@ -754,6 +732,74 @@ export const PuzzleBoardWithControls = ({
 
       schedule(step, RESUME_AUTO_STEP_MS);
     };
+
+    schedule(step, RESUME_AUTO_STEP_MS);
+  };
+
+  /**
+   * After answer-arrow recovery on a miss: auto-play every remaining ply
+   * (including later quiz indices) and finish as failed so auto-next can run.
+   * Stopping at the next enrolled miss left multi-quiz resume cards stranded.
+   */
+  const runAssistedRecoveryContinue = (pos: PuzzlePosition) => {
+    clearResumeAnimation();
+    clearSolutionAnimation();
+    setSolutionWalkthroughActive(true);
+    const anim = {
+      cancelled: false,
+      timeoutIds: [] as ReturnType<typeof setTimeout>[],
+    };
+    resumeAnimationRef.current = anim;
+
+    const schedule = (fn: () => void, ms: number) => {
+      const id = setTimeout(() => {
+        if (anim.cancelled) {
+          return;
+        }
+        fn();
+      }, ms);
+      anim.timeoutIds.push(id);
+    };
+
+    const finish = () => {
+      setSolutionWalkthroughActive(false);
+      setPuzzleComplete(true);
+      if (!failedAttemptFinishedRef.current) {
+        failedAttemptFinishedRef.current = true;
+        handleFeedback({
+          index: pos.getIndex(),
+          isCorrect: false,
+          isFinished: true,
+        });
+      }
+      incInteractionNum();
+    };
+
+    const step = () => {
+      if (anim.cancelled) {
+        return;
+      }
+
+      if (pos.isFinished()) {
+        finish();
+        return;
+      }
+
+      if (!pos.next()) {
+        if (pos.isFinished()) {
+          finish();
+        }
+        return;
+      }
+
+      incInteractionNum();
+      schedule(step, RESUME_AUTO_STEP_MS);
+    };
+
+    if (pos.isFinished()) {
+      finish();
+      return;
+    }
 
     schedule(step, RESUME_AUTO_STEP_MS);
   };
@@ -1093,6 +1139,7 @@ export const PuzzleBoardWithControls = ({
                     onFeedback={handleFeedback}
                     incInteractionNum={incInteractionNum}
                     onResumeCorrect={runResumeAutoAdvance}
+                    onAssistedRecoveryContinue={runAssistedRecoveryContinue}
                     revealAnswerOnIncorrect={revealAnswerOnIncorrect}
                     showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
                     allowRetryOnIncorrect={allowRetryOnIncorrect}

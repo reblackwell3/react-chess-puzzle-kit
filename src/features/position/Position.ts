@@ -203,15 +203,50 @@ export function normalizePuzzleResumeConfig(
   const startIndex =
     quizAtIndices.find((index) => index >= resume.startIndex) ??
     quizAtIndices[0]!;
+  const endIndex = Math.min(
+    moves.length,
+    Math.max(startIndex + 1, resume.endIndex ?? moves.length),
+  );
 
   return {
     startIndex,
-    quizAtIndices: [...new Set(quizAtIndices)].sort((a, b) => a - b),
+    endIndex,
+    // SRS puzzle cards are atomic. Keep only the target at the segment start.
+    quizAtIndices: [startIndex],
   };
+}
+
+/**
+ * Fresh puzzles and resume review both leave the opponent lead-in unplayed so
+ * setup intro can animate it. Resume keeps quiz/end metadata; only the initial
+ * board ply is held one move early (constructor `startIndex` is the land-at
+ * index; `quizAtIndices` still names the real quiz ply).
+ */
+export function puzzlePositionFromFetch(
+  fen: string,
+  moves: string[],
+  resume?: PuzzleResumeConfig,
+): PuzzlePosition {
+  const normalizedResume = normalizePuzzleResumeConfig(fen, moves, resume);
+  if (!normalizedResume) {
+    return new PuzzlePosition(fen, moves);
+  }
+
+  const boardStartIndex =
+    normalizedResume.startIndex > 0
+      ? normalizedResume.startIndex - 1
+      : normalizedResume.startIndex;
+
+  return new PuzzlePosition(fen, moves, {
+    ...normalizedResume,
+    startIndex: boardStartIndex,
+  });
 }
 
 export type PuzzleResumeConfig = {
   startIndex: number;
+  /** Exclusive end of this card's autoplay segment. */
+  endIndex?: number;
   quizAtIndices: number[];
 };
 
@@ -499,6 +534,10 @@ export class PuzzlePosition extends Position {
 
   getResumeConfig(): PuzzleResumeConfig | undefined {
     return this.resumeConfig;
+  }
+
+  override isFinished(): boolean {
+    return this.i >= (this.resumeConfig?.endIndex ?? this.moves.length);
   }
 
   /** True when the user must find the move at the current index. */
