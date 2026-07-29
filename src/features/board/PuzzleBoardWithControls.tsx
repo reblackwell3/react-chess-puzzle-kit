@@ -59,11 +59,11 @@ import {
 } from './puzzleBoardLayout';
 import { useStackPuzzleControlsBelow } from './useStackPuzzleControlsBelow';
 import {
-  advanceToPlayerTurn,
-  normalizePuzzleResumeConfig,
   playerMoveIndicesInRange,
+  puzzlePositionFromFetch,
   PuzzlePosition,
 } from '../position/Position';
+export { puzzlePositionFromFetch } from '../position/Position';
 export type { PuzzleMoveRecord } from '../position/moveHistory';
 export type {
   AnalysisContainerRenderProps,
@@ -128,23 +128,6 @@ export type BoardFeedbackRenderProps = {
   completedAfterMiss?: boolean;
   /** True when the user requested a hint on the current card. */
   hintUsed?: boolean;
-};
-
-/**
- * Resume review advances to the quiz ply immediately. Fresh puzzles stay on the
- * stored FEN so the opponent's lead-in move can animate onto the board.
- */
-const puzzlePositionFromFetch = (
-  fen: string,
-  moves: string[],
-  resume?: PuzzleFetchResult['resume'],
-): PuzzlePosition => {
-  const normalizedResume = normalizePuzzleResumeConfig(fen, moves, resume);
-  const newPosition = new PuzzlePosition(fen, moves, normalizedResume);
-  if (normalizedResume) {
-    advanceToPlayerTurn(newPosition);
-  }
-  return newPosition;
 };
 
 /** Delay before playing each opponent setup ply (matches course mistake repetition). */
@@ -438,8 +421,7 @@ export const PuzzleBoardWithControls = ({
         );
         setPosition(nextPosition);
         setSetupIntroPending(
-          !nextPosition.hasResumeConfig() &&
-            nextPosition.getSideToMove() !== nextPosition.getPlayerColor(),
+          nextPosition.getSideToMove() !== nextPosition.getPlayerColor(),
         );
         requestAnimationFrame(() => {
           if (!cancelled) {
@@ -467,15 +449,10 @@ export const PuzzleBoardWithControls = ({
     setProgressiveMoveUsed(false);
   }, [currentPlyIndex]);
 
-  // Animate opponent setup plies (usually the first move) onto fresh puzzles,
-  // matching course mistake-repetition lead-in timing.
+  // Animate opponent setup plies (usually the first move) onto fresh puzzles
+  // and resume/review cards, matching course mistake-repetition lead-in timing.
   useEffect(() => {
-    if (
-      !setupIntroPending ||
-      !position ||
-      loadingNextPuzzle ||
-      position.hasResumeConfig()
-    ) {
+    if (!setupIntroPending || !position || loadingNextPuzzle) {
       return;
     }
     if (position.getSideToMove() === position.getPlayerColor()) {

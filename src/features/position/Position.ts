@@ -216,6 +216,33 @@ export function normalizePuzzleResumeConfig(
   };
 }
 
+/**
+ * Fresh puzzles and resume review both leave the opponent lead-in unplayed so
+ * setup intro can animate it. Resume keeps quiz/end metadata; only the initial
+ * board ply is held one move early (constructor `startIndex` is the land-at
+ * index; `quizAtIndices` still names the real quiz ply).
+ */
+export function puzzlePositionFromFetch(
+  fen: string,
+  moves: string[],
+  resume?: PuzzleResumeConfig,
+): PuzzlePosition {
+  const normalizedResume = normalizePuzzleResumeConfig(fen, moves, resume);
+  if (!normalizedResume) {
+    return new PuzzlePosition(fen, moves);
+  }
+
+  const boardStartIndex =
+    normalizedResume.startIndex > 0
+      ? normalizedResume.startIndex - 1
+      : normalizedResume.startIndex;
+
+  return new PuzzlePosition(fen, moves, {
+    ...normalizedResume,
+    startIndex: boardStartIndex,
+  });
+}
+
 export type PuzzleResumeConfig = {
   startIndex: number;
   /** Exclusive end of this card's autoplay segment. */
