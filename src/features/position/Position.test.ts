@@ -135,21 +135,22 @@ describe('PuzzlePosition resume review', () => {
     ).toBe(true);
   });
 
-  it('auto-advances through non-quiz plies after a correct quiz move', () => {
+  it('finishes at the segment boundary before the next quiz card', () => {
     const position = new PuzzlePosition(DUAL_CHECKMATE_FEN, DUAL_CHECKMATE_MOVES, {
       startIndex: 1,
-      quizAtIndices: [1, 5],
+      endIndex: 5,
+      quizAtIndices: [1],
     });
 
     expect(position.tryGuess('a7', 'f7', 'Q').accepted).toBe(true);
     position.next();
 
-    while (!position.isFinished() && !position.isQuizIndex()) {
+    while (!position.isFinished()) {
       expect(position.next()).toBe(true);
     }
 
     expect(position.getIndex()).toBe(5);
-    expect(position.isQuizIndex()).toBe(true);
+    expect(position.isQuizIndex()).toBe(false);
   });
 
   it('opens resume review on the solver side when metadata starts on an opponent ply', () => {
@@ -229,6 +230,7 @@ describe('normalizePuzzleResumeConfig YQSzL', () => {
       }),
     ).toEqual({
       startIndex: 1,
+      endIndex: 4,
       quizAtIndices: [1],
     });
   });

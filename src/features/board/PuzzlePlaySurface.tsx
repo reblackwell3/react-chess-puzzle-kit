@@ -47,6 +47,11 @@ export interface PuzzlePlaySurfaceProps {
   boardWidth: number;
   /** After a correct move in resume review, auto-show intervening plies. */
   onResumeCorrect?: (position: PuzzlePosition) => void;
+  /**
+   * After dragging the answer-arrow recovery move on a missed ply, auto-play
+   * the rest of the line (including later quiz plies) and finish as failed.
+   */
+  onAssistedRecoveryContinue?: (position: PuzzlePosition) => void;
   /** After a wrong guess, play the correct move instead of allowing retries. */
   revealAnswerOnIncorrect?: boolean;
   /** After a wrong guess, show an arrow to the correct square. */
@@ -90,6 +95,7 @@ export const PuzzlePlaySurface = ({
   incInteractionNum,
   boardWidth,
   onResumeCorrect,
+  onAssistedRecoveryContinue,
   revealAnswerOnIncorrect = false,
   showAnswerArrowOnIncorrect = false,
   allowRetryOnIncorrect = true,
@@ -472,17 +478,23 @@ export const PuzzlePlaySurface = ({
         return;
       }
 
-      if (position.hasResumeConfig()) {
-        onResumeCorrect?.(position);
-        return;
-      }
-
+      // Miss already recorded — play out the rest (including later quiz plies)
+      // so review can auto-next instead of stopping on the next enrolled miss.
       if (assistedByAnswerArrow) {
+        if (onAssistedRecoveryContinue) {
+          onAssistedRecoveryContinue(position);
+          return;
+        }
         if (!position.isFinished()) {
           position.next();
           boardFenRef.current = position.fen();
         }
         notifyHost();
+        return;
+      }
+
+      if (position.hasResumeConfig()) {
+        onResumeCorrect?.(position);
         return;
       }
 

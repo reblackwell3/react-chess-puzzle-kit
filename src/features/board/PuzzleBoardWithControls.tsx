@@ -184,6 +184,7 @@ export type PuzzleFetchResult = {
   moves: string[];
   resume?: {
     startIndex: number;
+    endIndex?: number;
     quizAtIndices: number[];
   };
 };
@@ -758,6 +759,74 @@ export const PuzzleBoardWithControls = ({
     schedule(step, RESUME_AUTO_STEP_MS);
   };
 
+  /**
+   * After answer-arrow recovery on a miss: auto-play every remaining ply
+   * (including later quiz indices) and finish as failed so auto-next can run.
+   * Stopping at the next enrolled miss left multi-quiz resume cards stranded.
+   */
+  const runAssistedRecoveryContinue = (pos: PuzzlePosition) => {
+    clearResumeAnimation();
+    clearSolutionAnimation();
+    setSolutionWalkthroughActive(true);
+    const anim = {
+      cancelled: false,
+      timeoutIds: [] as ReturnType<typeof setTimeout>[],
+    };
+    resumeAnimationRef.current = anim;
+
+    const schedule = (fn: () => void, ms: number) => {
+      const id = setTimeout(() => {
+        if (anim.cancelled) {
+          return;
+        }
+        fn();
+      }, ms);
+      anim.timeoutIds.push(id);
+    };
+
+    const finish = () => {
+      setSolutionWalkthroughActive(false);
+      setPuzzleComplete(true);
+      if (!failedAttemptFinishedRef.current) {
+        failedAttemptFinishedRef.current = true;
+        handleFeedback({
+          index: pos.getIndex(),
+          isCorrect: false,
+          isFinished: true,
+        });
+      }
+      incInteractionNum();
+    };
+
+    const step = () => {
+      if (anim.cancelled) {
+        return;
+      }
+
+      if (pos.isFinished()) {
+        finish();
+        return;
+      }
+
+      if (!pos.next()) {
+        if (pos.isFinished()) {
+          finish();
+        }
+        return;
+      }
+
+      incInteractionNum();
+      schedule(step, RESUME_AUTO_STEP_MS);
+    };
+
+    if (pos.isFinished()) {
+      finish();
+      return;
+    }
+
+    schedule(step, RESUME_AUTO_STEP_MS);
+  };
+
   const handleShowCurrentMove = () => {
     if (!position || position.isFinished() || position.isSolutionRevealed()) {
       return;
@@ -1093,6 +1162,7 @@ export const PuzzleBoardWithControls = ({
                     onFeedback={handleFeedback}
                     incInteractionNum={incInteractionNum}
                     onResumeCorrect={runResumeAutoAdvance}
+                    onAssistedRecoveryContinue={runAssistedRecoveryContinue}
                     revealAnswerOnIncorrect={revealAnswerOnIncorrect}
                     showAnswerArrowOnIncorrect={showAnswerArrowOnIncorrect}
                     allowRetryOnIncorrect={allowRetryOnIncorrect}
